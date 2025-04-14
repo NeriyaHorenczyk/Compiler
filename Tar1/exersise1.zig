@@ -473,7 +473,7 @@ pub fn handleGroup4Push(allocator: std.mem.Allocator, index: []const u8) ![]u8 {
         \\@{d}
         \\D=M
         \\@SP
-        \\A=M-1
+        \\A=M
         \\M=D
         \\@SP
         \\M=M+1

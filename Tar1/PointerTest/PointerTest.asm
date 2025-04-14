@@ -80,7 +80,7 @@ M=M-1
 @3
 D=M
 @SP
-A=M-1
+A=M
 M=D
 @SP
 M=M+1
@@ -88,7 +88,7 @@ M=M+1
 @4
 D=M
 @SP
-A=M-1
+A=M
 M=D
 @SP
 M=M+1
