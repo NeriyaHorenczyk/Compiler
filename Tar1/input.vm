@@ -1,2 +1,26 @@
-hello!!:) //not supposed to be copied!!
-world!!:)
+add
+sub
+neg
+or
+and
+not
+eq
+gt
+lt
+push local 5
+pop local 5
+push argument 5
+pop argument 5
+push this 5
+pop this 5
+push that 5
+pop that 5
+push temp 5
+pop temp 5
+push pointer 0
+pop pointer 0
+push pointer 1
+pop pointer 1
+pop static 5
+push static 5
+push constant 5
