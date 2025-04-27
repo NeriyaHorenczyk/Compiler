@@ -541,6 +541,7 @@ pub fn handleGroup5Push(allocator: std.mem.Allocator, index: []const u8) ![]u8 {
 }
 
 pub fn generateBootstrapCode(allocator: std.mem.Allocator, counter_ptr: *i32) ![]u8 {
+    //generate the code for "call Sys.init" command
     const call_sys = try generateCallCode(allocator, "Sys.init", "0", counter_ptr);
     defer allocator.free(call_sys);
 
@@ -554,21 +555,29 @@ pub fn generateBootstrapCode(allocator: std.mem.Allocator, counter_ptr: *i32) ![
 }
 
 pub fn generateFunctionCode(allocator: std.mem.Allocator, func_name: []const u8, num_params: []const u8) ![]u8 {
+    //convert the number of local variables to actual number
     const num_params_number = try std.fmt.parseInt(usize, num_params, 10);
 
+    //this is the variable that will contain the k times "push 0" translation
     var push_segment = try std.fmt.allocPrint(allocator, "//no locals", .{});
     defer allocator.free(push_segment);
 
+    //if there is local variables so push them all
     if (num_params_number != 0) {
+        //the translation to the push 0 when this push command is not the last push 0 command
         const push_zero_and_forward = "M=0\nA=A+1\n";
+        //the translation to the push 0 when this push command is the last push 0 command
         const push_zero = "M=0";
+        //the size of the string that will contain all the push commands together
         const total_len = (push_zero_and_forward.len * (num_params_number - 1)) + push_zero.len;
         allocator.free(push_segment);
         push_segment = try allocator.alloc(u8, total_len);
+        //write the push commands
         for (0..num_params_number - 1) |i| {
             const dest_start = i * push_zero_and_forward.len;
             std.mem.copyForwards(u8, push_segment[dest_start..][0..push_zero_and_forward.len], push_zero_and_forward);
         }
+        //write the last push command
         std.mem.copyForwards(u8, push_segment[(num_params_number - 1) * (push_zero_and_forward.len) ..], push_zero);
     }
 
