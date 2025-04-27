@@ -1,3 +1,8 @@
+@256
+D=A
+@SP
+M=D
+//call Sys.init 0 0
 //add
 @SP
 A=M-1
@@ -238,7 +243,7 @@ M=M-1
 @3
 D=M
 @SP
-A=M-1
+A=M
 M=D
 @SP
 M=M+1
@@ -254,7 +259,7 @@ M=M-1
 @4
 D=M
 @SP
-A=M-1
+A=M
 M=D
 @SP
 M=M+1
@@ -290,3 +295,103 @@ A=M
 M=D
 @SP
 M=M+1
+//function g 5
+(g)
+@SP
+A=M
+M=0
+A=A+1
+M=0
+A=A+1
+M=0
+A=A+1
+M=0
+A=A+1
+M=0
+@5
+D=A
+@SP
+M=M+D
+//function Sys.init 0
+(Sys.init)
+@SP
+A=M
+//no locals
+@0
+D=A
+@SP
+M=M+D
+//push constant 6
+@6
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+//push constant 8
+@8
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+//call Class1.set 2
+//Error!
+//pop temp 0
+@0
+D=A
+@5
+D=D+A
+@13
+M=D
+@SP
+A=M-1
+D=M
+@13
+A=M
+M=D
+@SP
+M=M-1
+//push constant 23
+@23
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+//push constant 15
+@15
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+//call Class2.set 2
+//Error!
+//pop temp 0
+@0
+D=A
+@5
+D=D+A
+@13
+M=D
+@SP
+A=M-1
+D=M
+@13
+A=M
+M=D
+@SP
+M=M-1
+//call Class1.get 0
+//Error!
+//call Class2.get 0
+//Error!
+//label END
+//Error!
+//goto END
+//Error!

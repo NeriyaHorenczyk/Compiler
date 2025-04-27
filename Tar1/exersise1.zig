@@ -6,6 +6,7 @@ const Operation = enum {
     Eq,
     Gt,
     Lt,
+    Call,
 };
 
 pub fn main() !void {
@@ -42,9 +43,27 @@ pub fn main() !void {
     var writer = out_file.writer();
 
     var line_buf: [256]u8 = undefined;
-    var countersArr: [3]i32 = [_]i32{ 0, 0, 0 }; // Initialize all elements to 0, that is the counters array for the labels
+    var countersArr: [4]i32 = [_]i32{ 0, 0, 0, 0 }; // Initialize all elements to 0, that is the counters array for the labels
 
+    //check in the directory if there is a Sys.vm file, so it will generate bootstrap for him
+    var is_sys: bool = false;
     var it = dir.iterate();
+    while (try it.next()) |entry| {
+        //if this file is Sys.vm
+        if (std.mem.eql(u8, entry.name, "Sys.vm")) {
+            is_sys = true;
+            break;
+        }
+    }
+
+    //if there is Sys.vm in the directory - generate bootstrap for it at the beginning of the output file
+    if (is_sys) {
+        const bootstrap = try generateBootstrapCode(allocator, &countersArr[@as(u8, @intFromEnum(Operation.Call))]);
+        try writer.print("{s}\n", .{bootstrap});
+        allocator.free(bootstrap);
+    }
+
+    it = dir.iterate();
 
     //going through each file in the directory
     while (try it.next()) |entry| {
@@ -84,7 +103,7 @@ pub fn main() !void {
     }
 }
 
-pub fn convertToHack(allocator: std.mem.Allocator, command: []u8, countersArr: *[3]i32, file_name: []const u8) ![]u8 {
+pub fn convertToHack(allocator: std.mem.Allocator, command: []u8, countersArr: *[4]i32, file_name: []const u8) ![]u8 {
     var words_iter = mem.tokenizeAny(u8, command, " ");
     //get the command name
     const command_name = words_iter.next();
@@ -156,6 +175,16 @@ pub fn convertToHack(allocator: std.mem.Allocator, command: []u8, countersArr: *
             }
         }
 
+        if (std.mem.eql(u8, name, "function")) {
+            const func_name = words_iter.next();
+            if (func_name != null) {
+                const num_params = words_iter.next();
+                if (num_params != null) {
+                    return generateFunctionCode(allocator, func_name.?, num_params.?);
+                }
+            }
+        }
+
         return std.fmt.allocPrint(allocator, "//Error!", .{});
     }
 
@@ -185,7 +214,6 @@ pub fn generateSubCode(allocator: std.mem.Allocator) ![]u8 {
         \\M=M-1
     , .{});
 }
-
 pub fn generateNegCode(allocator: std.mem.Allocator) ![]u8 {
     return std.fmt.allocPrint(allocator,
         \\@SP
@@ -510,4 +538,57 @@ pub fn handleGroup5Push(allocator: std.mem.Allocator, index: []const u8) ![]u8 {
         \\@SP
         \\M=M+1
     , .{index});
+}
+
+pub fn generateBootstrapCode(allocator: std.mem.Allocator, counter_ptr: *i32) ![]u8 {
+    const call_sys = try generateCallCode(allocator, "Sys.init", "0", counter_ptr);
+    defer allocator.free(call_sys);
+
+    return std.fmt.allocPrint(allocator,
+        \\@256
+        \\D=A
+        \\@SP
+        \\M=D
+        \\{s}
+    , .{call_sys});
+}
+
+pub fn generateFunctionCode(allocator: std.mem.Allocator, func_name: []const u8, num_params: []const u8) ![]u8 {
+    const num_params_number = try std.fmt.parseInt(usize, num_params, 10);
+
+    var push_segment = try std.fmt.allocPrint(allocator, "//no locals", .{});
+    defer allocator.free(push_segment);
+
+    if (num_params_number != 0) {
+        const push_zero_and_forward = "M=0\nA=A+1\n";
+        const push_zero = "M=0";
+        const total_len = (push_zero_and_forward.len * (num_params_number - 1)) + push_zero.len;
+        allocator.free(push_segment);
+        push_segment = try allocator.alloc(u8, total_len);
+        for (0..num_params_number - 1) |i| {
+            const dest_start = i * push_zero_and_forward.len;
+            std.mem.copyForwards(u8, push_segment[dest_start..][0..push_zero_and_forward.len], push_zero_and_forward);
+        }
+        std.mem.copyForwards(u8, push_segment[(num_params_number - 1) * (push_zero_and_forward.len) ..], push_zero);
+    }
+
+    return std.fmt.allocPrint(allocator,
+        \\({s})
+        \\@SP
+        \\A=M
+        \\{s}
+        \\@{s}
+        \\D=A
+        \\@SP
+        \\M=M+D
+    , .{ func_name, push_segment, num_params });
+}
+
+pub fn generateCallCode(allocator: std.mem.Allocator, func_name: []const u8, num_params: []const u8, counter_ptr: *i32) ![]u8 {
+    const i = counter_ptr.*;
+    counter_ptr.* += 1;
+
+    return std.fmt.allocPrint(allocator,
+        \\//call {s} {s} {d}
+    , .{ func_name, num_params, i });
 }
