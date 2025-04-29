@@ -185,6 +185,43 @@ pub fn convertToHack(allocator: std.mem.Allocator, command: []u8, countersArr: *
             }
         }
 
+        if (std.mem.eql(u8, name, "call")) {
+            const func_name = words_iter.next();
+            if (func_name != null) {
+                const num_params = words_iter.next();
+                if (num_params != null) {
+                    return generateCallCode(allocator, func_name.?, num_params.?, &countersArr[@as(u8, @intFromEnum(Operation.Call))]);
+                }
+            }
+        }
+
+        if (std.mem.eql(u8, name, "return")) {
+            if (words_iter.next() == null) {
+                return generateReturnCode(allocator);
+            }
+        }
+
+        if (std.mem.eql(u8, name, "label")) {
+            const label_name = words_iter.next();
+            if (label_name != null) {
+                return generateLabel(allocator, file_name, label_name.?);
+            }
+        }
+
+        if (std.mem.eql(u8, name, "goto")) {
+            const label_name = words_iter.next();
+            if (label_name != null) {
+                return generateJumpLa(allocator, file_name, label_name.?);
+            }
+        }
+
+        if (std.mem.eql(u8, name, "if-goto")) {
+            const label_name = words_iter.next();
+            if (label_name != null) {
+                return generateIfGotoCode(allocator, file_name, label_name.?);
+            }
+        }
+
         return std.fmt.allocPrint(allocator, "//Error!", .{});
     }
 
@@ -598,6 +635,123 @@ pub fn generateCallCode(allocator: std.mem.Allocator, func_name: []const u8, num
     counter_ptr.* += 1;
 
     return std.fmt.allocPrint(allocator,
-        \\//call {s} {s} {d}
-    , .{ func_name, num_params, i });
+        \\@RETURN_{s}_{d}
+        \\D=A
+        \\@SP
+        \\A=M
+        \\M=D
+        \\@LCL
+        \\D=M
+        \\@SP
+        \\A=M+1
+        \\M=D
+        \\D=A+1
+        \\@SP
+        \\M=D+1
+        \\@ARG
+        \\D=M
+        \\@SP
+        \\A=M-1
+        \\M=D
+        \\@THIS
+        \\D=M
+        \\@SP
+        \\A=M
+        \\M=D
+        \\@THAT
+        \\D=M
+        \\@SP
+        \\A=M+1
+        \\M=D
+        \\D=A+1
+        \\@SP
+        \\M=D
+        \\@{s}
+        \\D=A
+        \\@5
+        \\D=D+A
+        \\@SP
+        \\D=M-D
+        \\@ARG
+        \\M=D
+        \\@SP
+        \\D=M
+        \\@LCL
+        \\M=D
+        \\@{s}
+        \\0;JMP
+        \\(RETURN_{s}_{d})
+    , .{ func_name, i, num_params, func_name, func_name, i });
+}
+
+pub fn generateLabel(allocator: std.mem.Allocator, file_name: []const u8, label_name: []const u8) ![]8 {
+    return std.fmt.allocPrint(allocator,
+        \\({s}.{s})
+    , .{ file_name, label_name });
+}
+
+pub fn generateJumpLa(allocator: std.mem.Allocator, file_name: []const u8, label_name: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator,
+        \\@{s}.{s}
+        \\0;JMP
+    , .{ file_name, label_name });
+}
+
+pub fn generateIfGotoCode(allocator: std.mem.Allocator, file_name: []const u8, label_name: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator,
+        \\@SP
+        \\A=M-1
+        \\D=M
+        \\@SP
+        \\M=M-1
+        \\@{s}.{s}
+        \\D;JNE
+    , .{ file_name, label_name });
+}
+
+pub fn generateReturnCode(allocator: std.mem.Allocator) ![]u8 {
+    return std.fmt.allocPrint(allocator,
+        \\@LCL
+        \\D=M
+        \\@13
+        \\M=D
+        \\@5
+        \\A=D-A
+        \\D=M
+        \\@14
+        \\M=D
+        \\@SP
+        \\A,M=M-1
+        \\D=M
+        \\@ARG
+        \\A=M
+        \\M=D
+        \\@ARG
+        \\D=M+1
+        \\@SP
+        \\M=D
+        \\@13
+        \\A,M=M-1
+        \\D=M
+        \\@THAT
+        \\M=D
+        \\@13
+        \\A,M=M-1
+        \\D=M
+        \\@THIS
+        \\M=D
+        \\@13
+        \\A,M=M-1
+        \\D=M
+        \\@ARG
+        \\M=D
+        \\@13
+        \\A,M=M-1
+        \\D=M
+        \\@LCL
+        \\M=D
+        \\@14
+        \\A=M
+        \\0;JMP
+    , .{});
 }
