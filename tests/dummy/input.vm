@@ -1,0 +1,5 @@
+call g 0
+
+function g 5
+push constant 5
+return
