@@ -1,21 +1,51 @@
 class Player {
     field int id;
 
+    // constructor
     constructor Player new(int playerId) {
         let id = playerId;
         return this;
     }
 
+    // getter for id
     method int getId() {
         return id;
     }
 
+    //gets input from the player and changing the arrow accordingly
     method int chooseColumn() {
         var int col;
-        do Output.printString("Player ");
-        do Output.printInt(id);
-        do Output.printString(", choose a column (0-9): ");
-        let col = Keyboard.readChar();
+        var boolean isDone;
+        var int tempChar;
+
+        let col = 0;
+        let isDone = false;
+
+        // initial arrow
+        do Graphics.Print_Selection_Arrow(col, true);
+
+        // gets input until enter
+        while(~(isDone)){
+            let tempChar = Keyboard.keyPressed();
+            //left
+            if((tempChar = 130) & (~(col = 0))){
+                let col = col - 1;
+                do Graphics.Print_Selection_Arrow((col + 1), false);
+                do Graphics.Print_Selection_Arrow((col), true);
+            }
+            //right
+            if((tempChar = 132) & (~(col = 9))){
+                let col = col + 1;
+                do Graphics.Print_Selection_Arrow((col - 1), false);
+                do Graphics.Print_Selection_Arrow((col), true);
+            }
+            //enter
+            if((tempChar = 128)){
+                do Graphics.Print_Selection_Arrow((col), false);
+                return col;
+            }
+        }
+
         return col;
     }
 }

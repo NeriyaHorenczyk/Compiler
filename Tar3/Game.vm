@@ -60,50 +60,73 @@ push this 3
 call Graphics.Print_Player_X_Wins_Message 1
 pop temp 0
 push this 3
+push constant 1
+eq
+if-goto IF_TRUE3
+goto IF_FALSE3
+label IF_TRUE3
+push constant 0
+not
 push this 0
 push constant 0
-call Board.getWinningIndex 2
-push constant 10
-call Graphics.mod 2
+call Board.getWinningIndexRow 2
 push this 0
 push constant 0
-call Board.getWinningIndex 2
-push constant 10
-call Math.divide 2
+call Board.getWinningIndexCol 2
 push this 0
 push constant 1
-call Board.getWinningIndex 2
-push constant 10
-call Graphics.mod 2
+call Board.getWinningIndexRow 2
 push this 0
 push constant 1
-call Board.getWinningIndex 2
-push constant 10
-call Math.divide 2
+call Board.getWinningIndexCol 2
 push this 0
 push constant 2
-call Board.getWinningIndex 2
-push constant 10
-call Graphics.mod 2
+call Board.getWinningIndexRow 2
 push this 0
 push constant 2
-call Board.getWinningIndex 2
-push constant 10
-call Math.divide 2
+call Board.getWinningIndexCol 2
 push this 0
 push constant 3
-call Board.getWinningIndex 2
-push constant 10
-call Graphics.mod 2
+call Board.getWinningIndexRow 2
 push this 0
 push constant 3
-call Board.getWinningIndex 2
-push constant 10
-call Math.divide 2
+call Board.getWinningIndexCol 2
 call Graphics.Print_Winning_Animation 9
 pop temp 0
 push constant 0
 return
+goto IF_END3
+label IF_FALSE3
+push constant 0
+push this 0
+push constant 0
+call Board.getWinningIndexRow 2
+push this 0
+push constant 0
+call Board.getWinningIndexCol 2
+push this 0
+push constant 1
+call Board.getWinningIndexRow 2
+push this 0
+push constant 1
+call Board.getWinningIndexCol 2
+push this 0
+push constant 2
+call Board.getWinningIndexRow 2
+push this 0
+push constant 2
+call Board.getWinningIndexCol 2
+push this 0
+push constant 3
+call Board.getWinningIndexRow 2
+push this 0
+push constant 3
+call Board.getWinningIndexCol 2
+call Graphics.Print_Winning_Animation 9
+pop temp 0
+push constant 0
+return
+label IF_END3
 label IF_FALSE2
 push pointer 0
 call Game.switchPlayer 1

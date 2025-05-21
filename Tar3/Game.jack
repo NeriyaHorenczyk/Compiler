@@ -6,6 +6,7 @@ class Game {
     field int currentPlayer;
     field int winner;
 
+    // constructor
     constructor Game new() {
         let board = Board.new();
         let player1 = Player.new(1);
@@ -14,6 +15,7 @@ class Game {
         return this;
     }
 
+    // the flow of the game
     method void run() {
         var boolean placed, won;
         var int col;
@@ -21,28 +23,44 @@ class Game {
         do Graphics.Print_Empty_Board();
 
         while (true) {
+            // the players choose now columns
             if (currentPlayer = 1) {
                 let col = player1.chooseColumn();
             } else {
                 let col = player2.chooseColumn();
             }
 
+            // place the piece there
             let placed = board.placePiece(col, currentPlayer);
             if (placed) {
+                // check if our player won
                 let won = board.checkWin(currentPlayer);
                 if (won) {
                     do Graphics.Print_Player_X_Wins_Message(currentPlayer);
-                    do Graphics.Print_Winning_Animation(currentPlayer,
-                        Graphics.mod(board.getWinningIndex(0),10),
-                        (board.getWinningIndex(0) / 10),
-                        Graphics.mod(board.getWinningIndex(1),10),
-                        (board.getWinningIndex(1) / 10),
-                        Graphics.mod(board.getWinningIndex(2),10),
-                        (board.getWinningIndex(2) / 10),
-                        Graphics.mod(board.getWinningIndex(3),10),
-                        (board.getWinningIndex(3) / 10));
-
-                    return;
+                    if(currentPlayer = 1){
+                        do Graphics.Print_Winning_Animation(true,
+                        board.getWinningIndexRow(0),
+                        board.getWinningIndexCol(0),
+                        board.getWinningIndexRow(1),
+                        board.getWinningIndexCol(1),
+                        board.getWinningIndexRow(2),
+                        board.getWinningIndexCol(2),
+                        board.getWinningIndexRow(3),
+                        board.getWinningIndexCol(3));
+                        return;
+                    }
+                    else{
+                        do Graphics.Print_Winning_Animation(false,
+                        board.getWinningIndexRow(0),
+                        board.getWinningIndexCol(0),
+                        board.getWinningIndexRow(1),
+                        board.getWinningIndexCol(1),
+                        board.getWinningIndexRow(2),
+                        board.getWinningIndexCol(2),
+                        board.getWinningIndexRow(3),
+                        board.getWinningIndexCol(3));
+                        return;
+                    }
                 }
                 do switchPlayer();
             }
@@ -50,6 +68,7 @@ class Game {
         return;
     }
     
+    // switch the number of active player
     method void switchPlayer() {
         if (currentPlayer = 1) {
             let currentPlayer = 2;

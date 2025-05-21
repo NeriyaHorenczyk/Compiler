@@ -1,11 +1,14 @@
 class Board {
     field Array grid; // 1D array of size 80 = 10 cols * 8 rows
-    field Array winningIndexes;
+    field Array winningIndexesRow;
+    field Array winningIndexesCol;
 
+    //constructor
     constructor Board new() {
         var int i;
         let grid = Array.new(80);
-        let winningIndexes = Array.new(4);
+        let winningIndexesRow = Array.new(4);
+        let winningIndexesCol = Array.new(4);
         let i = 0;
         while (i < 80) {
             let grid[i] = -1; // -1 is empty
@@ -14,6 +17,7 @@ class Board {
         return this;
     }
 
+    //place piece in chosen column, by the laws of physicks
     method boolean placePiece(int col, int playerId) {
         var int row;
         var int index;
@@ -38,6 +42,7 @@ class Board {
     }
 
 
+    // check if there is 4 in a row  for the player that placed the last piece
     method boolean checkWin(int playerId) {
         var int row, col, i;
         var boolean flag;
@@ -59,7 +64,8 @@ class Board {
                 if (flag) {
                     let i = 0;
                     while (i < 4) {
-                        let winningIndexes[i] = (row * 10) + (col + i);
+                        let winningIndexesRow[i] = row;
+                        let winningIndexesCol[i] = col + i;
                         let i = i + 1;
                     }
                     return true;
@@ -73,9 +79,9 @@ class Board {
         let col = 0;
         while (col < 10) {
             let row = 0;
-            let flag = true;
             while ((row = 4) | (row < 4)) { // max row for 4-in-a-row vertically
                 let i = 0;
+                let flag = true;
                 while (i < 4) {
                     if (~(grid[(row + i) * 10 + col] = playerId)) {
                         let flag = false;
@@ -85,7 +91,8 @@ class Board {
                 if (flag) {
                     let i = 0;
                     while (i < 4) {
-                        let winningIndexes[i] = ((row + i) * 10) + col;
+                        let winningIndexesRow[i] = row + i;
+                        let winningIndexesCol[i] = col;
                         let i = i + 1;
                     }
                     return true;
@@ -95,15 +102,15 @@ class Board {
             let col = col + 1;
         }
 
-        // Diagonal down-right check
-        let row = 0;
-        while ((row < 4) | (row = 4)) { // max row for 4-in-a-row diagonally down-right
-            let col = 0;
-            let flag = true;
-            while ((col < 6) | (col = 6)) { // max col for 4-in-a-row diagonally down-right
+        // Diagonal up-right check
+        let row = 4;
+        while (row > -1) { // max row for 4-in-a-row diagonally down-right
+            let col = 3;
+            while (col < 10) { // max col for 4-in-a-row diagonally down-right
                 let i = 0;
+                let flag = true;
                 while (i < 4) {
-                    if (~(grid[((row + i) * 10) + (col + i)] = playerId)) {
+                    if (~(grid[((row + i) * 10) + (col - i)] = playerId)) {
                         let flag = false;
                     }
                     let i = i + 1;
@@ -111,25 +118,26 @@ class Board {
                 if (flag) {
                     let i = 0;
                     while (i < 4) {
-                        let winningIndexes[i] = ((row + i) * 10) + (col + i);
+                        let winningIndexesRow[i] = row + i;
+                        let winningIndexesCol[i] = col - i;
                         let i = i + 1;
                     }
                     return true;
                 }
                 let col = col + 1;
             }
-            let row = row + 1;
+            let row = row - 1;
         }
 
-        // Diagonal up-right check
-        let row = 3;
-        while (row < 8) {
-            let col = 0;
-            let flag = true;
-            while ((col < 6) | (col = 6)) {
+        // Diagonal down-right check
+        let col = 3;
+        while (col < 10) {
+            let row = 3;
+            while (row < 8) {
                 let i = 0;
+                let flag = true;
                 while (i < 4) {
-                    if (~(grid[(row - i) * 10 + col + i] = playerId)) {
+                    if (~(grid[((row - i) * 10) + (col - i)] = playerId)) {
                         let flag = false;
                     }
                     let i = i + 1;
@@ -137,23 +145,32 @@ class Board {
                 if (flag) {
                     let i = 0;
                     while (i < 4) {
-                        let winningIndexes[i] = ((row - i) * 10) + (col + i);
+                        let winningIndexesRow[i] = row - i;
+                        let winningIndexesCol[i] = col - i;
                         let i = i + 1;
                     }
                     return true;
                 }
-                let col = col + 1;
+                let row = row + 1;
             }
-            let row = row + 1;
+            let col = col + 1;
         }
 
         return false;
+
     }
 
 
-    method int getWinningIndex(int index) {
+    // getters for the arrays
+    method int getWinningIndexRow(int index) {
         var int temp;
-        let temp = winningIndexes[index];
+        let temp = winningIndexesRow[index];
+        return temp;
+    }
+
+    method int getWinningIndexCol(int index) {
+        var int temp;
+        let temp = winningIndexesCol[index];
         return temp;
     }
 

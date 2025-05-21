@@ -111,13 +111,13 @@ class Graphics {
         return;
     }
 
-    function void Print_Piece_Type_One(int indexX, int indexY) {
+    function void Print_Piece_Type_One(int row, int col) {
         var int tempRadius;
         var boolean blackOrWhite;
         var int centerX, centerY;
 
-        let centerX = Graphics.getCircleXByIndex(indexX);
-        let centerY = Graphics.getCircleYByIndex(indexY);
+        let centerX = Graphics.getCircleXByIndex(col);
+        let centerY = Graphics.getCircleYByIndex(row);
 
         let blackOrWhite = true;
         let tempRadius = 12;
@@ -130,14 +130,14 @@ class Graphics {
         return;
     }
 
-    function void Print_Piece_Type_Two(int indexX, int indexY) {
+    function void Print_Piece_Type_Two(int row, int col) {
         var int x, y, dx, dy, distSquared;
         var int centerX, centerY;
         var boolean color;
         var int iteration;
 
-        let centerX = Graphics.getCircleXByIndex(indexX);
-        let centerY = Graphics.getCircleYByIndex(indexY);
+        let centerX = Graphics.getCircleXByIndex(col);
+        let centerY = Graphics.getCircleYByIndex(row);
 
         let color = true;
 
@@ -179,12 +179,12 @@ class Graphics {
         return;
     }
 
-    function void Print_Piece_Type_Zero(int indexX, int indexY) {
+    function void Print_Piece_Type_Zero(int row, int col) {
         var int x, y;
         var int centerX, centerY;
 
-        let centerX = Graphics.getCircleXByIndex(indexX);
-        let centerY = Graphics.getCircleYByIndex(indexY);
+        let centerX = Graphics.getCircleXByIndex(col);
+        let centerY = Graphics.getCircleYByIndex(row);
 
         do Screen.setColor(true);
 
@@ -213,35 +213,35 @@ class Graphics {
         return;
     }
 
-    function void Print_Winning_Animation(boolean winningTeam, int indexXOne, int indexYOne, int indexXTwo, int indexYTwo, int indexXThree, int indexYThree, int indexXFour, int indexYFour){
+    function void Print_Winning_Animation(boolean winningTeam, int rowOne, int colOne, int rowTwo, int colTwo, int rowThree, int colThree, int rowFour, int colFour){
         var int i;
 
         let i = 0;
         while(i < 5){
             if(winningTeam){
                 
-                do Graphics.Print_Piece_Type_Zero(indexXOne, indexYOne);
-                do Graphics.Print_Piece_Type_Zero(indexXTwo, indexYTwo);
-                do Graphics.Print_Piece_Type_Zero(indexXThree, indexYThree);
-                do Graphics.Print_Piece_Type_Zero(indexXFour, indexYFour);
+                do Graphics.Print_Piece_Type_Zero(rowOne, colOne);
+                do Graphics.Print_Piece_Type_Zero(rowTwo, colTwo);
+                do Graphics.Print_Piece_Type_Zero(rowThree, colThree);
+                do Graphics.Print_Piece_Type_Zero(rowFour, colFour);
 
-                do Graphics.Print_Piece_Type_One(indexXOne, indexYOne);
-                do Graphics.Print_Piece_Type_One(indexXTwo, indexYTwo);
-                do Graphics.Print_Piece_Type_One(indexXThree, indexYThree);
-                do Graphics.Print_Piece_Type_One(indexXFour, indexYFour);
+                do Graphics.Print_Piece_Type_One(rowOne, colOne);
+                do Graphics.Print_Piece_Type_One(rowTwo, colTwo);
+                do Graphics.Print_Piece_Type_One(rowThree, colThree);
+                do Graphics.Print_Piece_Type_One(rowFour, colFour);
             }
 
             else{
 
-                do Graphics.Print_Piece_Type_Zero(indexXOne, indexYOne);
-                do Graphics.Print_Piece_Type_Zero(indexXTwo, indexYTwo);
-                do Graphics.Print_Piece_Type_Zero(indexXThree, indexYThree);
-                do Graphics.Print_Piece_Type_Zero(indexXFour, indexYFour);
+                do Graphics.Print_Piece_Type_Zero(rowOne, colOne);
+                do Graphics.Print_Piece_Type_Zero(rowTwo, colTwo);
+                do Graphics.Print_Piece_Type_Zero(rowThree, colThree);
+                do Graphics.Print_Piece_Type_Zero(rowFour, colFour);
 
-                do Graphics.Print_Piece_Type_Two(indexXOne, indexYOne);
-                do Graphics.Print_Piece_Type_Two(indexXTwo, indexYTwo);
-                do Graphics.Print_Piece_Type_Two(indexXThree, indexYThree);
-                do Graphics.Print_Piece_Type_Two(indexXFour, indexYFour);
+                do Graphics.Print_Piece_Type_Two(rowOne, colOne);
+                do Graphics.Print_Piece_Type_Two(rowTwo, colTwo);
+                do Graphics.Print_Piece_Type_Two(rowThree, colThree);
+                do Graphics.Print_Piece_Type_Two(rowFour, colFour);
             }
             let i = i + 1;
         }

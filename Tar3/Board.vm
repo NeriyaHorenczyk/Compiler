@@ -1,5 +1,5 @@
 function Board.new 1
-push constant 2
+push constant 3
 call Memory.alloc 1
 pop pointer 0
 push constant 80
@@ -8,6 +8,9 @@ pop this 0
 push constant 4
 call Array.new 1
 pop this 1
+push constant 4
+call Array.new 1
+pop this 2
 push constant 0
 pop local 0
 label WHILE_EXP0
@@ -178,11 +181,15 @@ push local 2
 push this 1
 add
 push local 0
-push constant 10
-call Math.multiply 2
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push this 2
+add
 push local 1
 push local 2
-add
 add
 pop temp 0
 pop pointer 1
@@ -220,9 +227,6 @@ not
 if-goto WHILE_END4
 push constant 0
 pop local 0
-push constant 0
-not
-pop local 3
 label WHILE_EXP5
 push local 0
 push constant 4
@@ -235,6 +239,9 @@ not
 if-goto WHILE_END5
 push constant 0
 pop local 2
+push constant 0
+not
+pop local 3
 label WHILE_EXP6
 push local 2
 push constant 4
@@ -285,10 +292,14 @@ add
 push local 0
 push local 2
 add
-push constant 10
-call Math.multiply 2
-push local 1
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push this 2
 add
+push local 1
 pop temp 0
 pop pointer 1
 push temp 0
@@ -315,35 +326,28 @@ add
 pop local 1
 goto WHILE_EXP4
 label WHILE_END4
-push constant 0
+push constant 4
 pop local 0
 label WHILE_EXP8
 push local 0
-push constant 4
-lt
-push local 0
-push constant 4
-eq
-or
+push constant 1
+neg
+gt
 not
 if-goto WHILE_END8
-push constant 0
+push constant 3
 pop local 1
-push constant 0
-not
-pop local 3
 label WHILE_EXP9
 push local 1
-push constant 6
+push constant 10
 lt
-push local 1
-push constant 6
-eq
-or
 not
 if-goto WHILE_END9
 push constant 0
 pop local 2
+push constant 0
+not
+pop local 3
 label WHILE_EXP10
 push local 2
 push constant 4
@@ -357,7 +361,7 @@ push constant 10
 call Math.multiply 2
 push local 1
 push local 2
-add
+sub
 add
 push this 0
 add
@@ -396,12 +400,16 @@ add
 push local 0
 push local 2
 add
-push constant 10
-call Math.multiply 2
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push this 2
+add
 push local 1
 push local 2
-add
-add
+sub
 pop temp 0
 pop pointer 1
 push temp 0
@@ -424,35 +432,31 @@ goto WHILE_EXP9
 label WHILE_END9
 push local 0
 push constant 1
-add
+sub
 pop local 0
 goto WHILE_EXP8
 label WHILE_END8
 push constant 3
-pop local 0
+pop local 1
 label WHILE_EXP12
+push local 1
+push constant 10
+lt
+not
+if-goto WHILE_END12
+push constant 3
+pop local 0
+label WHILE_EXP13
 push local 0
 push constant 8
 lt
 not
-if-goto WHILE_END12
-push constant 0
-pop local 1
-push constant 0
-not
-pop local 3
-label WHILE_EXP13
-push local 1
-push constant 6
-lt
-push local 1
-push constant 6
-eq
-or
-not
 if-goto WHILE_END13
 push constant 0
 pop local 2
+push constant 0
+not
+pop local 3
 label WHILE_EXP14
 push local 2
 push constant 4
@@ -465,8 +469,8 @@ sub
 push constant 10
 call Math.multiply 2
 push local 1
-add
 push local 2
+sub
 add
 push this 0
 add
@@ -505,12 +509,16 @@ add
 push local 0
 push local 2
 sub
-push constant 10
-call Math.multiply 2
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push this 2
+add
 push local 1
 push local 2
-add
-add
+sub
 pop temp 0
 pop pointer 1
 push temp 0
@@ -525,25 +533,36 @@ push constant 0
 not
 return
 label IF_FALSE7
-push local 1
-push constant 1
-add
-pop local 1
-goto WHILE_EXP13
-label WHILE_END13
 push local 0
 push constant 1
 add
 pop local 0
+goto WHILE_EXP13
+label WHILE_END13
+push local 1
+push constant 1
+add
+pop local 1
 goto WHILE_EXP12
 label WHILE_END12
 push constant 0
 return
-function Board.getWinningIndex 1
+function Board.getWinningIndexRow 1
 push argument 0
 pop pointer 0
 push argument 1
 push this 1
+add
+pop pointer 1
+push that 0
+pop local 0
+push local 0
+return
+function Board.getWinningIndexCol 1
+push argument 0
+pop pointer 0
+push argument 1
+push this 2
 add
 pop pointer 1
 push that 0
