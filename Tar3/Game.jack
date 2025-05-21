@@ -1,0 +1,51 @@
+class Game {
+    
+    field Board board;
+    field Player player1;
+    field Player player2;
+    field int currentPlayer;
+    field int winner;
+
+    constructor Game new() {
+        let board = Board.new();
+        let player1 = Player.new(1);
+        let player2 = Player.new(2);
+        let currentPlayer = 1;
+        return this;
+    }
+
+    method void run() {
+        var boolean placed, won;
+        var int col;
+
+        do Graphics.Print_Empty_Board();
+
+        while (true) {
+            if (currentPlayer = 1) {
+                let col = player1.chooseColumn();
+            } else {
+                let col = player2.chooseColumn();
+            }
+
+            let placed = board.placePiece(col, currentPlayer);
+            if (placed) {
+                let won = board.checkWin(currentPlayer);
+                if (won) {
+                    do Graphics.Print_Player_X_Wins_Message(currentPlayer);
+                    return;
+                }
+                do switchPlayer();
+            }
+        }
+        return;
+    }
+    
+    method void switchPlayer() {
+        if (currentPlayer = 1) {
+            let currentPlayer = 2;
+        } else {
+            let currentPlayer = 1;
+        }
+        return;
+    }
+}

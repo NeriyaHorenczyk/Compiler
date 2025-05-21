@@ -214,7 +214,10 @@ class Graphics {
     }
 
     function void Print_Winning_Animation(boolean winningTeam, int indexXOne, int indexYOne, int indexXTwo, int indexYTwo, int indexXThree, int indexYThree, int indexXFour, int indexYFour){
-        while(true){
+        var int i;
+
+        let i = 0;
+        while(i < 5){
             if(winningTeam){
                 
                 do Graphics.Print_Piece_Type_Zero(indexXOne, indexYOne);
@@ -240,6 +243,7 @@ class Graphics {
                 do Graphics.Print_Piece_Type_Two(indexXThree, indexYThree);
                 do Graphics.Print_Piece_Type_Two(indexXFour, indexYFour);
             }
+            let i = i + 1;
         }
 
         return;

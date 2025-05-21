@@ -1,0 +1,21 @@
+class Player {
+    field int id;
+
+    constructor Player new(int playerId) {
+        let id = playerId;
+        return this;
+    }
+
+    method int getId() {
+        return id;
+    }
+
+    method int chooseColumn() {
+        var int col;
+        do Output.printString("Player ");
+        do Output.printInt(id);
+        do Output.printString(", choose a column (0-9): ");
+        let col = Keyboard.readChar();
+        return col;
+    }
+}

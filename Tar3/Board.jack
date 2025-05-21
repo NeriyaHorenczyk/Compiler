@@ -1,0 +1,131 @@
+class Board {
+    field Array grid; // 1D array of size 80 = 10 cols * 8 rows
+
+    constructor Board new() {
+        var int i;
+        let grid = Array.new(80);
+        let i = 0;
+        while (i < 80) {
+            let grid[i] = -1; // -1 is empty
+            let i = i + 1;
+        }
+        return this;
+    }
+
+    method boolean placePiece(int col, int playerId) {
+        var int row;
+        var int index;
+
+        // Check from bottom row up
+        let row = 7;
+        while ((row > 0) | (row = 0)) {
+            let index = row * 10 + col;
+            if (grid[index] = -1) {
+                let grid[index] = playerId;
+                if(playerId = 1){
+                    do Graphics.Print_Piece_Type_One(row, col);
+                }
+                else{
+                    do Graphics.Print_Piece_Type_Two(row, col);
+                }
+                return true;
+            }
+            let row = row - 1;
+        }
+        return false; // column full
+    }
+
+
+    method boolean checkWin(int playerId) {
+        var int row, col, i;
+        var boolean flag;
+
+        
+        // Horizontal check
+        let row = 0;
+        while (row < 8) {
+            let col = 0;
+            while ((col = 6) | (col < 6)) { // max col for 4-in-a-row horizontally
+                let i = 0;
+                let flag = true;
+                while (i < 4) {
+                    if (~(grid[(row * 10) + (col + i)] = playerId)) {
+                        let flag = false;
+                    }
+                    let i = i + 1;
+                }
+                if (flag) {
+                    return true;
+                }
+                let col = col + 1;
+            }
+            let row = row + 1;
+        }
+
+        // Vertical check
+        let col = 0;
+        while (col < 10) {
+            let row = 0;
+            let flag = true;
+            while ((row = 4) | (row < 4)) { // max row for 4-in-a-row vertically
+                let i = 0;
+                while (i < 4) {
+                    if (~(grid[(row + i) * 10 + col] = playerId)) {
+                        let flag = false;
+                    }
+                    let i = i + 1;
+                }
+                if (flag) {
+                    return true;
+                }
+                let row = row + 1;
+            }
+            let col = col + 1;
+        }
+
+        // Diagonal down-right check
+        let row = 0;
+        while ((row < 4) | (row = 4)) { // max row for 4-in-a-row diagonally down-right
+            let col = 0;
+            let flag = true;
+            while ((col < 6) | (col = 6)) { // max col for 4-in-a-row diagonally down-right
+                let i = 0;
+                while (i < 4) {
+                    if (~(grid[((row + i) * 10) + (col + i)] = playerId)) {
+                        let flag = false;
+                    }
+                    let i = i + 1;
+                }
+                if (flag) {
+                    return true;
+                }
+                let col = col + 1;
+            }
+            let row = row + 1;
+        }
+
+        // Diagonal up-right check
+        let row = 3;
+        while (row < 8) {
+            let col = 0;
+            let flag = true;
+            while ((col < 6) | (col = 6)) {
+                let i = 0;
+                while (i < 4) {
+                    if (~(grid[(row - i) * 10 + col + i] = playerId)) {
+                        let flag = false;
+                    }
+                    let i = i + 1;
+                }
+                if (flag) {
+                    return true;
+                }
+                let col = col + 1;
+            }
+            let row = row + 1;
+        }
+
+        return false;
+    }
+
+}
