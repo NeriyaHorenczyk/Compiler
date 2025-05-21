@@ -1,0 +1,248 @@
+class Graphics {
+
+    function boolean mod(int x, int y){
+        while((x > y) | (x = y)){
+            let x = x - y;
+        }
+
+        if( x = 0){
+            return true;
+        }
+
+        return false;
+    }
+
+    function int getArrowXByIndex(int index){
+        return (127 + (index * 26));
+    }
+
+    function int getCircleXByIndex(int index){
+        return (127 + (index * 26)) + 12;
+    }
+
+    function int getCircleYByIndex(int index){
+        return (49 + (index * 26))  +12;
+    }
+
+    function void Print_Empty_Board(){
+        var int row, col;
+        var int x, y;
+        var int squareSize, spacing;
+        var int startX, startY;
+        var int maxRows, maxCols;
+
+        do Screen.clearScreen();
+
+        let squareSize = 25;
+        let spacing = 1;
+
+        let maxCols = 10;
+        let maxRows = 8;
+
+        let startX = 127;
+        let startY = 49;
+
+        do Screen.setColor(true);
+
+        let row = 0;
+        while (row < maxRows) {
+            let col = 0;
+            while (col < maxCols) {
+
+                let x = startX + (col * (squareSize + spacing));
+                let y = startY + (row * (squareSize + spacing));
+
+                do Screen.drawRectangle(x, y, x + squareSize - 1, y + squareSize - 1);
+
+                let col = col + 1;
+            }
+            let row = row + 1;
+        }
+
+        return;
+    }
+
+    function void Print_Selection_Arrow(int index, boolean color) {
+        var int arrowHeight, arrowWidth;
+        var int bodyHeight, bodyWidth;
+        var int x, y;
+        var int i, step;
+        var int centerX;
+        var int pixelX;
+        var int startX, startY;
+
+        let startX = Graphics.getArrowXByIndex(index);
+        let startY = 5;
+
+        let arrowHeight = 40;
+        let arrowWidth = 25;
+
+        // the rectangle
+        let bodyHeight = 25; 
+        let bodyWidth = 10;
+
+        
+        let centerX = startX + (arrowWidth / 2);
+
+        //printing the rectangle
+        do Screen.setColor(color);
+        do Screen.drawRectangle(
+            centerX - (bodyWidth / 2),
+            startY,
+            centerX + (bodyWidth / 2),
+            startY + bodyHeight - 1
+        );
+
+        //printing the triangle
+        let step = 0;
+
+        while (step < 15) {
+            let pixelX = centerX - (14 - step);
+            let y = startY + bodyHeight + step;
+
+            while ((pixelX = (centerX + (14 - step))) | (pixelX < (centerX + (14 - step)))) {
+                do Screen.drawPixel(pixelX, y);
+                let pixelX = pixelX + 1;
+            }
+
+            let step = step + 1;
+        }
+
+        return;
+    }
+
+    function void Print_Piece_Type_One(int indexX, int indexY) {
+        var int tempRadius;
+        var boolean blackOrWhite;
+        var int centerX, centerY;
+
+        let centerX = Graphics.getCircleXByIndex(indexX);
+        let centerY = Graphics.getCircleYByIndex(indexY);
+
+        let blackOrWhite = true;
+        let tempRadius = 12;
+        while((tempRadius = 0) | (tempRadius > 0)){
+            do Screen.setColor(blackOrWhite);
+            do Screen.drawCircle(centerX, centerY, tempRadius);
+            let blackOrWhite = ~(blackOrWhite);
+            let tempRadius = (tempRadius - 1);
+        }
+        return;
+    }
+
+    function void Print_Piece_Type_Two(int indexX, int indexY) {
+        var int x, y, dx, dy, distSquared;
+        var int centerX, centerY;
+        var boolean color;
+        var int iteration;
+
+        let centerX = Graphics.getCircleXByIndex(indexX);
+        let centerY = Graphics.getCircleYByIndex(indexY);
+
+        let color = true;
+
+        let y = centerY - 12;
+
+        let iteration = 0;
+
+        while (y < (centerY + 13)) {
+            let x = centerX - 12;
+            while (x < (centerX + 13)) {
+
+                do Screen.setColor(color);
+
+                let dx = x - centerX;
+                let dy = y - centerY;
+                let distSquared = (dx * dx) + (dy * dy);
+
+                if ((distSquared < 144) | (distSquared = 144)) {
+                    
+                    do Screen.drawPixel(x, y);
+                }
+
+
+                let x = x + 1;
+            }
+
+            let iteration = iteration + 1;
+
+                if(~(Graphics.mod(iteration, 3))){
+                    let color  = false;
+                }
+                else{
+                    let color = true;
+                }
+
+            let y = y + 1;
+        }
+
+        return;
+    }
+
+    function void Print_Piece_Type_Zero(int indexX, int indexY) {
+        var int x, y;
+        var int centerX, centerY;
+
+        let centerX = Graphics.getCircleXByIndex(indexX);
+        let centerY = Graphics.getCircleYByIndex(indexY);
+
+        do Screen.setColor(true);
+
+        let y = centerY - 12;
+
+        while (y < (centerY + 13)) {
+            let x = centerX - 12;
+            while (x < (centerX + 13)) {
+  
+                do Screen.drawPixel(x, y);
+
+                let x = x + 1;
+            }
+
+            let y = y + 1;
+        }
+
+        return;
+    }
+
+    function void Print_Player_X_Wins_Message(int x) {
+        do Output.printString("Player ");
+        do Output.printInt(x);
+        do Output.printString(" wins!");
+
+        return;
+    }
+
+    function void Print_Winning_Animation(boolean winningTeam, int indexXOne, int indexYOne, int indexXTwo, int indexYTwo, int indexXThree, int indexYThree, int indexXFour, int indexYFour){
+        while(true){
+            if(winningTeam){
+                
+                do Graphics.Print_Piece_Type_Zero(indexXOne, indexYOne);
+                do Graphics.Print_Piece_Type_Zero(indexXTwo, indexYTwo);
+                do Graphics.Print_Piece_Type_Zero(indexXThree, indexYThree);
+                do Graphics.Print_Piece_Type_Zero(indexXFour, indexYFour);
+
+                do Graphics.Print_Piece_Type_One(indexXOne, indexYOne);
+                do Graphics.Print_Piece_Type_One(indexXTwo, indexYTwo);
+                do Graphics.Print_Piece_Type_One(indexXThree, indexYThree);
+                do Graphics.Print_Piece_Type_One(indexXFour, indexYFour);
+            }
+
+            else{
+
+                do Graphics.Print_Piece_Type_Zero(indexXOne, indexYOne);
+                do Graphics.Print_Piece_Type_Zero(indexXTwo, indexYTwo);
+                do Graphics.Print_Piece_Type_Zero(indexXThree, indexYThree);
+                do Graphics.Print_Piece_Type_Zero(indexXFour, indexYFour);
+
+                do Graphics.Print_Piece_Type_Two(indexXOne, indexYOne);
+                do Graphics.Print_Piece_Type_Two(indexXTwo, indexYTwo);
+                do Graphics.Print_Piece_Type_Two(indexXThree, indexYThree);
+                do Graphics.Print_Piece_Type_Two(indexXFour, indexYFour);
+            }
+        }
+
+        return;
+    }
+
+}

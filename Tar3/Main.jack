@@ -1,0 +1,12 @@
+class Main{
+    function void main(){
+        do Graphics.Print_Empty_Board();
+        do Graphics.Print_Piece_Type_Two(0, 0);
+        do Graphics.Print_Piece_Type_Two(1, 1);
+        do Graphics.Print_Piece_Type_Two(2, 2);
+        do Graphics.Print_Piece_Type_Two(3, 3);
+        do Graphics.Print_Winning_Animation(false, 0,0,1,1,2,2,3,3);
+
+        return;
+    }
+}
