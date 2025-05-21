@@ -32,6 +32,16 @@ class Game {
                 let won = board.checkWin(currentPlayer);
                 if (won) {
                     do Graphics.Print_Player_X_Wins_Message(currentPlayer);
+                    do Graphics.Print_Winning_Animation(currentPlayer,
+                        Graphics.mod(board.getWinningIndex(0),10),
+                        (board.getWinningIndex(0) / 10),
+                        Graphics.mod(board.getWinningIndex(1),10),
+                        (board.getWinningIndex(1) / 10),
+                        Graphics.mod(board.getWinningIndex(2),10),
+                        (board.getWinningIndex(2) / 10),
+                        Graphics.mod(board.getWinningIndex(3),10),
+                        (board.getWinningIndex(3) / 10));
+
                     return;
                 }
                 do switchPlayer();

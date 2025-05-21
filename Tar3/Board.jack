@@ -1,9 +1,11 @@
 class Board {
     field Array grid; // 1D array of size 80 = 10 cols * 8 rows
+    field Array winningIndexes;
 
     constructor Board new() {
         var int i;
         let grid = Array.new(80);
+        let winningIndexes = Array.new(4);
         let i = 0;
         while (i < 80) {
             let grid[i] = -1; // -1 is empty
@@ -55,6 +57,11 @@ class Board {
                     let i = i + 1;
                 }
                 if (flag) {
+                    let i = 0;
+                    while (i < 4) {
+                        let winningIndexes[i] = (row * 10) + (col + i);
+                        let i = i + 1;
+                    }
                     return true;
                 }
                 let col = col + 1;
@@ -76,6 +83,11 @@ class Board {
                     let i = i + 1;
                 }
                 if (flag) {
+                    let i = 0;
+                    while (i < 4) {
+                        let winningIndexes[i] = ((row + i) * 10) + col;
+                        let i = i + 1;
+                    }
                     return true;
                 }
                 let row = row + 1;
@@ -97,6 +109,11 @@ class Board {
                     let i = i + 1;
                 }
                 if (flag) {
+                    let i = 0;
+                    while (i < 4) {
+                        let winningIndexes[i] = ((row + i) * 10) + (col + i);
+                        let i = i + 1;
+                    }
                     return true;
                 }
                 let col = col + 1;
@@ -118,6 +135,11 @@ class Board {
                     let i = i + 1;
                 }
                 if (flag) {
+                    let i = 0;
+                    while (i < 4) {
+                        let winningIndexes[i] = ((row - i) * 10) + (col + i);
+                        let i = i + 1;
+                    }
                     return true;
                 }
                 let col = col + 1;
@@ -126,6 +148,13 @@ class Board {
         }
 
         return false;
+    }
+
+
+    method int getWinningIndex(int index) {
+        var int temp;
+        let temp = winningIndexes[index];
+        return temp;
     }
 
 }
