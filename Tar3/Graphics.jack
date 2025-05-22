@@ -1,5 +1,6 @@
 class Graphics {
 
+    // Modulo function
     function boolean mod(int x, int y){
         while((x > y) | (x = y)){
             let x = x - y;
@@ -12,18 +13,22 @@ class Graphics {
         return false;
     }
 
+    // Get the X coordinate of the arrow at a specific index
     function int getArrowXByIndex(int index){
         return (127 + (index * 26));
     }
 
+    // Convert X coordinate to Circle coordinate
     function int getCircleXByIndex(int index){
         return (127 + (index * 26)) + 12;
     }
 
+    // Convert Y coordinate to Circle coordinate
     function int getCircleYByIndex(int index){
         return (49 + (index * 26))  +12;
     }
 
+    // Print an empty board
     function void Print_Empty_Board(){
         var int row, col;
         var int x, y;
@@ -62,6 +67,7 @@ class Graphics {
         return;
     }
 
+    // Print the arrow for the selected column
     function void Print_Selection_Arrow(int index, boolean color) {
         var int arrowHeight, arrowWidth;
         var int bodyHeight, bodyWidth;
@@ -111,6 +117,7 @@ class Graphics {
         return;
     }
 
+    // Print the Player 1 piece
     function void Print_Piece_Type_One(int row, int col) {
         var int tempRadius;
         var boolean blackOrWhite;
@@ -130,6 +137,7 @@ class Graphics {
         return;
     }
 
+    // Print the Player 2 piece
     function void Print_Piece_Type_Two(int row, int col) {
         var int x, y, dx, dy, distSquared;
         var int centerX, centerY;
@@ -179,6 +187,7 @@ class Graphics {
         return;
     }
 
+    // Delete the Piece
     function void Print_Piece_Type_Zero(int row, int col) {
         var int x, y;
         var int centerX, centerY;
@@ -205,6 +214,7 @@ class Graphics {
         return;
     }
 
+    // Print the Player wins message
     function void Print_Player_X_Wins_Message(int x) {
         do Output.printString("Player ");
         do Output.printInt(x);
@@ -213,6 +223,7 @@ class Graphics {
         return;
     }
 
+    // Execute the winning animation
     function void Print_Winning_Animation(boolean winningTeam, int rowOne, int colOne, int rowTwo, int colTwo, int rowThree, int colThree, int rowFour, int colFour){
         var int i;
 
