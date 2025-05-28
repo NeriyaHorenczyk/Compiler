@@ -1,5 +1,11 @@
-call g 0
+push constant 0
+if-goto SKIP1
+push constant 111
+label SKIP1
 
-function g 5
-push constant 5
-return
+push constant 1
+if-goto SKIP2
+push constant 222
+label SKIP2
+
+push constant 333
