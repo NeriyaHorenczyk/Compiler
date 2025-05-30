@@ -224,5 +224,5 @@ fn increment_character(_current : u8,current_character: *u8, buffer : *std.Array
 }
 
 fn buffer_to_writer(buffer: *std.ArrayList(u8), lexeme: []u8, writer: Writer) !void {
-    try writer.print("<{s}>{s}</{s}>", .{lexeme, (buffer.*).items, lexeme});
+    try writer.print("<{s}>{s}</{s}>\n", .{lexeme, (buffer.*).items, lexeme});
 }
