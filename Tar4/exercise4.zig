@@ -2,22 +2,11 @@
 //Sagiv Maoz - 325570257
 //the groop of Yair Goldshtein
 
+const states = @import("states.zig");
 const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
 const Writer = std.io.Writer(std.fs.File, std.fs.File.WriteError, std.fs.File.write);
-
-const keywords = [_][]const u8{
-    "class",  "constructor", "function", "method", "field",
-    "static", "var",         "int",      "char",   "boolean",
-    "void",   "true",        "false",    "null",   "this",
-    "let",    "do",          "if",       "else",   "while",
-    "return",
-};
-
-const symbols = [_][]const u8{
-    "{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~",
-};
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -77,29 +66,9 @@ pub fn main() !void {
 
 pub fn writeTokens(allocator: std.mem.Allocator, file_content: []u8, writer: Writer) !void {
     var current_character: u8 = 0;
-    var buffer = try std.fmt.allocPrint(allocator, "", .{});
-    defer allocator.free(buffer);
-    q0(allocator, file_content, &current_character, &buffer, writer);
+    while (current_character != file_content.len) {
+        var buffer = std.ArrayList(u8).init(allocator);
+        defer buffer.deinit();
+        states.q0(allocator, file_content, &current_character, &buffer, writer);
+    }
 }
-
-pub fn q0(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q1(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q2(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q3(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q4(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q5(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q6(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q7(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q8(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q9(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
-
-pub fn q10(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *[]u8, writer: Writer) !void {}
