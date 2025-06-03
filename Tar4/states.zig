@@ -142,27 +142,83 @@ pub fn q5(file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8)
     return;
 }
 
-pub fn q6(file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+pub fn q6(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+    const _current = file_content[*current_character];
+
+    if (_current != '\n') {
+        increment_character(_current, current_character, buffer);
+
+        q6(allocator, file_content, current_character, buffer, writer);
+
+        return;
+    }
+}
+
+pub fn q7(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+    const _current = file_content[*current_character];
+
+    increment_character(_current, current_character, buffer);
+
+    if (_current != '*') {
+        q7(allocator, file_content, current_character, buffer, writer);
+
+        return;
+    }
+
+    q8(allocator, file_content, current_character, buffer, writer);
     return;
 }
 
-pub fn q7(file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+pub fn q8(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+    const _current = file_content[*current_character];
+
+    increment_character(_current, current_character, buffer);
+
+    if (_current == '*') {
+        q8(allocator, file_content, current_character, buffer, writer);
+        return;
+    }
+
+    if (_current == '/') {
+        q9(allocator, file_content, current_character, buffer, writer);
+        return;
+    }
+
+    q7(allocator, file_content, current_character, buffer, writer);
     return;
 }
 
-pub fn q8(file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+pub fn q9(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+    const _current = file_content[*current_character];
+
+    increment_character(_current, current_character, buffer);
     return;
 }
 
-pub fn q9(buffer: *std.ArrayList(u8), writer: Writer) !void {
+pub fn q10(allocator: std.mem.Allocator, file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
+    const _current = file_content[*current_character];
+
+    if ((_current >= '0' and _current <= '9') or
+        (_current >= 'a' and _current <= 'z') or
+        (_current >= 'A' and _current <= 'Z') or
+        _current != '"' or
+        isInSymbol(symbols, _current))
+    {
+        increment_character(_current, current_character, buffer);
+        q10(allocator, file_content, current_character, buffer, writer);
+        return;
+    }
+
+    if (buffer.*.items.len == 1) {
+        buffer_to_writer(buffer, "Symbol", writer);
+        return;
+    }
+
+    buffer_to_writer(buffer, "Error", writer);
     return;
 }
 
-pub fn q10(file_content: []u8, current_character: *u8, buffer: *std.ArrayList(u8), writer: Writer) !void {
-    return;
-}
-
-// Increment the current characater by 1 and append the current character to the buffer.
+// Increment the current character by 1 and append the current character to the buffer.
 fn increment_character(_current: u8, current_character: *u8, buffer: *std.ArrayList(u8)) !void {
     current_character.* += 1;
     (buffer.*).append(_current);
@@ -171,4 +227,12 @@ fn increment_character(_current: u8, current_character: *u8, buffer: *std.ArrayL
 
 fn buffer_to_writer(buffer: *std.ArrayList(u8), lexeme: []u8, writer: Writer) !void {
     try writer.print("<{s}>{s}</{s}>\n", .{ lexeme, (buffer.*).items, lexeme });
+}
+
+// Check if the character is in the symbols array.
+fn isInSymbol(_symbols: []const u8, ch: u8) bool {
+    for (_symbols) |sym| {
+        if (sym.len == 1 and sym[0] == ch) return true;
+    }
+    return false;
 }
