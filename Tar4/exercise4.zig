@@ -69,6 +69,6 @@ pub fn writeTokens(allocator: std.mem.Allocator, file_content: []u8, writer: Wri
     while (current_character != file_content.len) {
         var buffer = std.ArrayList(u8).init(allocator);
         defer buffer.deinit();
-        states.q0(allocator, file_content, &current_character, &buffer, writer);
+        states.q0(file_content, &current_character, &buffer, writer);
     }
 }
