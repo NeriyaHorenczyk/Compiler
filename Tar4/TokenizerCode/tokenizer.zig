@@ -24,7 +24,7 @@ pub fn main() !void {
 
     //going through each file in the directory
     while (try it.next()) |entry| {
-        //if the file is not vm file then continue to the next iteration
+        //if the file is not jack file then continue to the next iteration
         const first_point_location = mem.indexOf(u8, entry.name, ".") orelse entry.name.len;
         const clear_file_name = entry.name[0..first_point_location];
         if (!mem.endsWith(u8, entry.name, ".jack")) continue;
@@ -55,7 +55,7 @@ pub fn main() !void {
         defer allocator.free(contents);
 
         if (!mem.eql(u8, contents, "")) {
-            //convert the actual jack line to xml and writing it to the xml file
+            //convert the actual jack file to xml and writing it to the xml file
             try writeTokens(allocator, contents, writer);
         }
 
@@ -63,14 +63,21 @@ pub fn main() !void {
     }
 }
 
+// helping function that calls the DFA while the file is not ended and write it content as tokens
 pub fn writeTokens(allocator: mem.Allocator, file_content: []u8, writer: anytype) !void {
+
+    // pointer to the current index. this index will be changed within the states
     const current_character = try allocator.create(usize);
     defer allocator.destroy(current_character);
     current_character.* = 0;
 
+    // activate the DFA until the file is ended
     while (current_character.* != file_content.len) {
+        // get list of characters which the letters accumulated in the DFA will be written to it and then to the xml file
         var buffer = std.ArrayList(u8).init(allocator);
         defer buffer.deinit();
+
+        // start the DFA
         try states.q0(file_content, current_character, &buffer, writer);
     }
 }
