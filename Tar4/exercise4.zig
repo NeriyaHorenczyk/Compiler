@@ -2,11 +2,10 @@
 //Sagiv Maoz - 325570257
 //the groop of Yair Goldshtein
 
-const states = @import("states.zig");
 const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
-const Writer = std.io.Writer(std.fs.File, std.fs.File.WriteError, std.fs.File.write);
+const states = @import("states.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -55,20 +54,23 @@ pub fn main() !void {
         const contents = try jack_file.readToEndAlloc(allocator, std.math.maxInt(usize));
         defer allocator.free(contents);
 
-        if (!std.mem.eql(u8, contents, "")) {
+        if (!mem.eql(u8, contents, "")) {
             //convert the actual jack line to xml and writing it to the xml file
             try writeTokens(allocator, contents, writer);
         }
 
-        try writer.print("</tokens>", .{});
+        try writer.print("</tokens>\n", .{});
     }
 }
 
-pub fn writeTokens(allocator: std.mem.Allocator, file_content: []u8, writer: Writer) !void {
-    var current_character: u8 = 0;
-    while (current_character != file_content.len) {
+pub fn writeTokens(allocator: mem.Allocator, file_content: []u8, writer: anytype) !void {
+    const current_character = try allocator.create(usize);
+    defer allocator.destroy(current_character);
+    current_character.* = 0;
+
+    while (current_character.* != file_content.len) {
         var buffer = std.ArrayList(u8).init(allocator);
         defer buffer.deinit();
-        states.q0(file_content, &current_character, &buffer, writer);
+        try states.q0(file_content, current_character, &buffer, writer);
     }
 }
