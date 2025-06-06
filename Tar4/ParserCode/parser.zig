@@ -111,5 +111,8 @@ fn getTokens(allocator: mem.Allocator, file_content: []u8) !std.ArrayList(Token)
         try tokens.append(Token.init(lexeme_copy, content_copy));
     }
 
+    //adding end of file token
+    try tokens.append(Token.init("end", "$"));
+
     return tokens;
 }

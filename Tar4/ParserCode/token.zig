@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const Token = struct {
     lexeme: []const u8,
     content: []const u8,
@@ -15,5 +17,10 @@ pub const Token = struct {
             .lexeme = lexeme,
             .content = content,
         };
+    }
+
+    pub fn equals(self: Token, other: Token) bool {
+        return std.mem.eql(u8, self.lexeme, other.lexeme) and
+            std.mem.eql(u8, self.content, other.content);
     }
 };
