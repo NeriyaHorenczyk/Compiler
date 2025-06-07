@@ -19,8 +19,8 @@ pub const Token = struct {
         };
     }
 
-    pub fn equals(self: Token, other: Token) bool {
+    fn equals(self: Token, other: Token) bool {
         return std.mem.eql(u8, self.lexeme, other.lexeme) and
-            std.mem.eql(u8, self.content, other.content);
+            (std.mem.eql(u8, self.content, other.content) or (std.mem.eql(u8, self.content, "#")));
     }
 };

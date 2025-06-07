@@ -6,6 +6,7 @@ const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
 const Token = @import("token.zig").Token;
+const grammar = @import("grammar.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -38,7 +39,7 @@ pub fn main() !void {
         defer out_file.close();
 
         //get a writer handle to the output file
-        //var writer = out_file.writer();
+        const writer = out_file.writer();
 
         //getting the full path for this file
         const file_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ input_directory_path, entry.name });
@@ -55,11 +56,11 @@ pub fn main() !void {
         if (!mem.eql(u8, content, "")) {
 
             //convert the xml list into xml tree
-            const x = try getTokens(allocator, content);
+            const tokens = try getTokens(allocator, content);
 
-            for (x.items) |token| {
-                std.debug.print("{s} {s}\n", .{ token.getLexeme(), token.getContent() });
-            }
+            const current: usize = 0;
+
+            try grammar._class(writer, 0, tokens, &current);
         }
     }
 }
