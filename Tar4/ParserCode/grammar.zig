@@ -250,7 +250,7 @@ fn _term(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current:
                             try match(writer, depth + 1, tokens_list, current, tokens.rbracket);
                         } else {
                             if (peek(tokens_list, (current.*)).equals(tokens.tilde) or peek(tokens_list, (current.*)).equals(tokens.minus)) {
-                                try unaryOp(writer, depth + 1, tokens_list, current);
+                                try _unaryOp(writer, depth + 1, tokens_list, current);
 
                                 try _term(writer, depth + 1, tokens_list, current);
                             } else {
@@ -269,4 +269,302 @@ fn _term(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current:
     }
     writeTab(writer, depth);
     try writer.print("<{s}>\n", .{"/term"});
+}
+
+fn _expression(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"expression"});
+
+    try _term(writer, depth + 1, tokens_list, current);
+    const current_token = peek(tokens_list, (current.*));
+
+    while (current_token.equals(tokens.plus) or
+        current_token.equals(tokens.minus) or
+        current_token.equals(tokens.star) or
+        current_token.equals(tokens.slash) or
+        current_token.equals(tokens.amp) or
+        current_token.equals(tokens.pipe) or
+        current_token.equals(tokens.lt) or
+        current_token.equals(tokens.gt) or
+        current_token.equals(tokens.equal))
+    {
+        try _op(writer, depth + 1, tokens_list, current);
+
+        try _term(writer, depth + 1, tokens_list, current);
+    }
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/expression"});
+}
+
+fn _op(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"op"});
+    const current_token = peek(tokens_list, (current.*));
+
+    try match(writer, depth + 1, tokens_list, current, current_token);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/op"});
+}
+
+fn _doStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"doStatement"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.do_kw);
+
+    try _subroutineCall(writer, depth + 1, tokens_list, current);
+
+    try match(writer, depth + 1, tokens_list, current, tokens.semicolon);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/doStatement"});
+}
+
+fn _returnStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"returnStatement"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.return_kw);
+
+    if (!peek(tokens_list, (current.*)).equals(tokens.semicolon)) {
+        try _expression(writer, depth + 1, tokens_list, current);
+    }
+
+    try match(writer, depth + 1, tokens_list, current, tokens.semicolon);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/returnStatement"});
+}
+
+fn _expressionList(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"expressionList"});
+
+    if (!peek(tokens_list, (current.*)).equals(tokens.rparen)) {
+        try _expression(writer, depth + 1, tokens_list, current);
+
+        while (peek(tokens_list, (current.*)).equals(tokens.comma)) {
+            try match(writer, depth + 1, tokens_list, current, tokens.comma);
+
+            try _expression(writer, depth + 1, tokens_list, current);
+        }
+    }
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/expressionList"});
+}
+
+fn _keywordConstant(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"keywordConstant"});
+
+    const current_token = peek(tokens_list, (current.*));
+
+    if (current_token.equals(tokens.true_kw) or
+        current_token.equals(tokens.false_kw) or
+        current_token.equals(tokens.null_kw) or
+        current_token.equals(tokens.this_kw))
+    {
+        try match(writer, depth + 1, tokens_list, current, current_token);
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+        std.os.exit(0);
+    }
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/keywordConstant"});
+}
+
+fn _unaryOp(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"unaryOp"});
+
+    const current_token = peek(tokens_list, (current.*));
+
+    if (current_token.equals(tokens.tilde) or current_token.equals(tokens.minus)) {
+        try match(writer, depth + 1, tokens_list, current, current_token);
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+        std.os.exit(0);
+    }
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/unaryOp"});
+}
+
+fn _className(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"className"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.identifier);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/className"});
+}
+
+fn _subroutineName(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"subroutineName"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.identifier);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/subroutineName"});
+}
+
+fn _varName(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"varName"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.identifier);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/varName"});
+}
+
+fn _classVarDec(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"classVarDec"});
+
+    const current_token = peek(tokens_list, (current.*));
+
+    if (current_token.equals(tokens.static_kw) or current_token.equals(tokens.field_kw)) {
+        try match(writer, depth + 1, tokens_list, current, current_token);
+
+        try _type(writer, depth + 1, tokens_list, current);
+
+        try _varName(writer, depth + 1, tokens_list, current);
+
+        while (peek(tokens_list, (current.*)).equals(tokens.comma)) {
+            try match(writer, depth + 1, tokens_list, current, tokens.comma);
+
+            try _varName(writer, depth + 1, tokens_list, current);
+        }
+
+        try match(writer, depth + 1, tokens_list, current, tokens.semicolon);
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+        std.os.exit(0);
+    }
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/classVarDec"});
+}
+
+fn _type(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"type"});
+
+    const current_token = peek(tokens_list, (current.*));
+
+    if (current_token.equals(tokens.int_kw) or
+        current_token.equals(tokens.boolean_kw) or
+        current_token.equals(tokens.char_kw) or
+        current_token.equals(tokens.identifier))
+    {
+        try match(writer, depth + 1, tokens_list, current, current_token);
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+        std.os.exit(0);
+    }
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/type"});
+}
+
+pub fn _subroutineDec(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"subroutineDec"});
+
+    const current_token = peek(tokens_list, (current.*));
+
+    if (current_token.equals(tokens.constructor_kw) or
+        current_token.equals(tokens.method_kw) or
+        current_token.equals(tokens.function_kw))
+    {
+        try match(writer, depth + 1, tokens_list, current, current_token);
+
+        if (current_token.equals(tokens.void_kw) or current_token.equals(tokens.int_kw) or current_token.equals(tokens.boolean_kw) or current_token.equals(tokens.char_kw) or current_token.equals(tokens.identifier)) {
+            try match(writer, depth + 1, tokens_list, current, current_token);
+
+            try _subroutineName(writer, depth + 1, tokens_list, current);
+
+            try match(writer, depth + 1, tokens_list, current, tokens.lparen);
+
+            try _parameterList(writer, depth + 1, tokens_list, current);
+
+            try match(writer, depth + 1, tokens_list, current, tokens.rparen);
+
+            try _subroutineBody(writer, depth + 1, tokens_list, current);
+
+            try match(writer, depth + 1, tokens_list, current, tokens.lbrace);
+        } else {
+            std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+            std.os.exit(0);
+        }
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
+        std.os.exit(0);
+    }
+}
+
+fn _parameterList(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"parameterList"});
+
+    try _type(writer, depth + 1, tokens_list, current);
+
+    try _varName(writer, depth + 1, tokens_list, current);
+
+    while (peek(tokens_list, (current.*)).equals(tokens.comma)) {
+        try match(writer, depth + 1, tokens_list, current, tokens.comma);
+
+        try _type(writer, depth + 1, tokens_list, current);
+
+        try _varName(writer, depth + 1, tokens_list, current);
+    }
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/parameterList"});
+}
+
+fn _subroutineBody(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"subroutineBody"});
+
+    if (peek(tokens_list, (current.*)).equals(tokens.lbrace)) {
+        try match(writer, depth + 1, tokens_list, current, tokens.lbrace);
+
+        while (peek(tokens_list, (current.*)).equals(tokens.var_kw)) {
+            try _varDec(writer, depth + 1, tokens_list, current);
+        }
+        try _statements(writer, depth + 1, tokens_list, current);
+        try match(writer, depth + 1, tokens_list, current, tokens.rbrace);
+    } else {
+        std.debug.print("unexpected token \"{s}\"!\n", .{peek(tokens_list, (current.*)).getContent()});
+        std.os.exit(0);
+    }
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/subroutineBody"});
+}
+
+fn _varDec(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) !void {
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"varDec"});
+
+    try match(writer, depth + 1, tokens_list, current, tokens.var_kw);
+
+    try _type(writer, depth + 1, tokens_list, current);
+
+    try _varName(writer, depth + 1, tokens_list, current);
+
+    while (peek(tokens_list, (current.*)).equals(tokens.comma)) {
+        try match(writer, depth + 1, tokens_list, current, tokens.comma);
+
+        try _varName(writer, depth + 1, tokens_list, current);
+    }
+
+    try match(writer, depth + 1, tokens_list, current, tokens.semicolon);
+
+    writeTab(writer, depth);
+    try writer.print("<{s}>\n", .{"/varDec"});
 }
