@@ -58,7 +58,7 @@ pub fn main() !void {
             //convert the xml list into xml tree
             const tokens = try getTokens(allocator, content);
 
-            const current: usize = 0;
+            var current: usize = 0;
 
             try grammar._class(writer, 0, tokens, &current);
         }
