@@ -15,11 +15,11 @@ pub const plus = Token.init("symbol", "+");
 pub const minus = Token.init("symbol", "-");
 pub const star = Token.init("symbol", "*");
 pub const slash = Token.init("symbol", "/");
-pub const amp = Token.init("symbol", "&amp");
+pub const amp = Token.init("symbol", "&amp;");
 pub const pipe = Token.init("symbol", "|");
 pub const tilde = Token.init("symbol", "~");
-pub const lt = Token.init("symbol", "&lt");
-pub const gt = Token.init("symbol", "&gt");
+pub const lt = Token.init("symbol", "&lt;");
+pub const gt = Token.init("symbol", "&gt;");
 
 // Keywords
 pub const class_kw = Token.init("keyword", "class");
