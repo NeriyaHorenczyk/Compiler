@@ -1,5 +1,7 @@
 const Token = @import("token.zig").Token;
 
+//the entire token set, for quick and clean comparing
+
 // Symbols
 pub const lparen = Token.init("symbol", "(");
 pub const rparen = Token.init("symbol", ")");
