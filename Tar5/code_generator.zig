@@ -175,15 +175,9 @@ fn _statement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), cur
 }
 
 fn _statements(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"statements"});
-
     while ((try peek(tokens_list, (current.*))).equals(tokens.if_kw) or (try peek(tokens_list, (current.*))).equals(tokens.let_kw) or (try peek(tokens_list, (current.*))).equals(tokens.while_kw) or (try peek(tokens_list, (current.*))).equals(tokens.do_kw) or (try peek(tokens_list, (current.*))).equals(tokens.return_kw)) {
         try _statement(writer, depth + 1, tokens_list, current);
     }
-
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/statements"});
 }
 
 fn _subroutineCall(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
@@ -322,9 +316,6 @@ fn _doStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), c
 }
 
 fn _returnStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"returnStatement"});
-
     try proceed(writer, depth + 1, tokens_list, current, tokens.return_kw);
 
     if (!(try peek(tokens_list, (current.*))).equals(tokens.semicolon)) {
@@ -332,9 +323,6 @@ fn _returnStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token
     }
 
     try proceed(writer, depth + 1, tokens_list, current, tokens.semicolon);
-
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/returnStatement"});
 }
 
 fn _expressionList(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
