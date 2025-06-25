@@ -8,8 +8,7 @@ const mem = std.mem;
 const Token = @import("token.zig").Token;
 const code_generator = @import("code_generator.zig");
 const records = @import("symbol_table_records.zig");
-const InnerMap = std.AutoHashMap([]const u8, records.ClassRecord);
-const OuterMap = std.AutoHashMap([]const u8, InnerMap);
+const ClassMap = std.AutoHashMap([]const u8, records.ClassRecord);
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -24,9 +23,8 @@ pub fn main() !void {
     var dir = try fs.cwd().openDir(input_directory_path, .{ .iterate = true });
     defer dir.close();
 
-    // create the table for each class symbol table for each class
-    var classes_map = OuterMap.init(allocator);
-    defer classes_map.deinit();
+    // create a static counter
+    var static_counter: usize = 0;
 
     var it = dir.iterate();
 
@@ -53,35 +51,28 @@ pub fn main() !void {
         defer allocator.free(file_path);
 
         //opening the file for reading
-        var jack_file = try fs.cwd().openFile(file_path, .{});
-        defer jack_file.close();
+        var XML_file = try fs.cwd().openFile(file_path, .{});
+        defer XML_file.close();
 
         //translate the entire file into XML tree
-        const content = try jack_file.readToEndAlloc(allocator, std.math.maxInt(usize));
+        const content = try XML_file.readToEndAlloc(allocator, std.math.maxInt(usize));
         defer allocator.free(content);
 
         if (!mem.eql(u8, content, "")) {
 
             //create a new class symbol table for this class
-            const temp_table = InnerMap.init(allocator);
-            classes_map.put(clear_file_name, temp_table) catch |err| {
-                if (err == error.OutOfMemory) return err;
-                return error.InvalidXmlFormat;
-            };
+            var class_table = ClassMap.init(allocator);
+            defer class_table.deinit();
 
             //convert the xml list into xml tree
             const tokens = try getTokens(allocator, content);
 
             var current: usize = 0;
+            var field_counter: usize = 0;
+            var label_counter: usize = 0;
 
-            try code_generator._class(writer, tokens, &current, classes_map, clear_file_name, true);
+            try code_generator._class(allocator, writer, tokens, &current, &class_table, &static_counter, &field_counter, &label_counter);
         }
-    }
-
-    // free all the class symbol tables
-    var free_it = classes_map.iterator();
-    while (free_it.next()) |entry| {
-        entry.value.deinit();
     }
 }
 

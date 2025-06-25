@@ -23,18 +23,9 @@ fn proceed(current: *usize) anyerror!void {
 }
 
 // helping function to put some record inside the class symbol table
-fn insert_into_function_symbol_table(allocator: std.heap.page_allocator, function_table: FunctionMap, var_type: []const u8, is_argument: bool, index: *usize) anyerror!void {
-    const record_ptr = allocator.create(records.FunctionRecord) catch unreachable;
-    record_ptr.* = records.ClassRecord.init(var_type, is_argument, index);
-    function_table.put(var_type, record_ptr.*) catch unreachable;
-
-    index.* += 1;
-}
-
-// helping function to put some record inside the class symbol table
-fn insert_into_class_symbol_table(allocator: std.heap.page_allocator, class_table: ClassMap, var_type: []const u8, is_static: bool, index: *usize) anyerror!void {
+fn insert_into_class_symbol_table(allocator: std.mem.Allocator, class_table: *ClassMap, var_type: []const u8, is_static: bool, index: *usize) anyerror!void {
     const record_ptr = allocator.create(records.ClassRecord) catch unreachable;
-    record_ptr.* = records.ClassRecord.init(var_type, is_static, index);
+    record_ptr.* = records.ClassRecord.init(var_type, is_static, index.*);
     class_table.put(var_type, record_ptr.*) catch unreachable;
 
     index.* += 1;
@@ -43,7 +34,7 @@ fn insert_into_class_symbol_table(allocator: std.heap.page_allocator, class_tabl
 //--------------------------------------------------------
 // the code writer functions:
 //--------------------------------------------------------
-pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: ClassMap, class_name: []const u8, static_counter: *usize, field_counter: *usize, label_counter: *usize) anyerror!void {
+pub fn _class(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, static_counter: *usize, field_counter: *usize, label_counter: *usize) anyerror!void {
 
     // ignore 'class'
     try proceed(current);
@@ -56,7 +47,7 @@ pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: 
 
     // while we have class variables, we will handle them
     while ((try peek(tokens_list, (current.*))).equals(tokens.static_kw) or (try peek(tokens_list, (current.*))).equals(tokens.field_kw)) {
-        try _classVarDec(allocator, tokens_list, current, class_table, class_name, static_counter, field_counter);
+        try _classVarDec(allocator, tokens_list, current, class_table, static_counter, field_counter);
     }
 
     // while we have subroutine declarations, we will handle them
@@ -70,7 +61,7 @@ pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: 
     return;
 }
 
-fn _ifStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
+fn _ifStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
     const current_label = label_counter.*;
     label_counter.* += 1;
 
@@ -80,9 +71,12 @@ fn _ifStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *us
     //ignore the '('
     try proceed(current);
 
-    try _expression(writer, tokens_list, current, class_table, function_table);
+    try _expression(allocator, writer, tokens_list, current, class_table, function_table);
 
-    writeCode(writer, "not\n if-goto L{d}\n", .{current_label});
+    var code = try std.fmt.allocPrint(allocator, "not\n if-goto L{d}\n", .{current_label});
+    try writeCode(writer, code);
+    allocator.free(code);
+
     //ignore the ')'
     try proceed(current);
 
@@ -98,7 +92,9 @@ fn _ifStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *us
         const next_label = label_counter.*;
         label_counter.* += 1;
 
-        writeCode(writer, "goto L{d}\nlabel{d}\n", .{ next_label, current_label });
+        code = try std.fmt.allocPrint(allocator, "goto L{d}\nlabel{d}\n", .{ next_label, current_label });
+        try writeCode(writer, code);
+        allocator.free(code);
 
         // ignore the 'else' keyword
         try proceed(current);
@@ -108,30 +104,38 @@ fn _ifStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *us
 
         try _statements(writer, tokens_list, current, class_table, function_table, label_counter);
 
-        writeCode(writer, "label L{d}\n", .{next_label});
+        code = try std.fmt.allocPrint(allocator, "label L{d}\n", .{next_label});
+        try writeCode(writer, code);
+        allocator.free(code);
 
         // ignore the '}'
         try proceed(current);
     } else {
-        writeCode(writer, "label L{d}\n", .{current_label});
+        code = try std.fmt.allocPrint(allocator, "label L{d}\n", .{current_label});
+        try writeCode(writer, code);
+        allocator.free(code);
     }
 }
 
-fn _letStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
+fn _letStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
 
     //ignore the 'let' keyword
     try proceed(current);
 
     const var_name = try _varName(tokens_list, current);
 
-    const var_record = function_table.get(var_name) orelse {
-        class_table.get(var_name) orelse {
+    const var_record = function_table.get(var_name) orelse blk: {
+        const class_record = class_table.get(var_name) orelse {
             std.debug.print("variable \"{s}\" not found in class or function symbol table!\n", .{var_name});
-            std.process.exit(0);
+            std.process.exit(1);
         };
+        break :blk class_record;
     };
 
-    writeCode(writer, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
+    var code = try std.fmt.allocPrint(allocator, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
+    try writeCode(writer, code);
+    allocator.free(code);
+
     if ((try peek(tokens_list, (current.*))).equals(tokens.lbracket)) {
 
         // ignore the '['
@@ -139,56 +143,83 @@ fn _letStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *u
 
         try _expression(writer, tokens_list, current, class_table, function_table);
 
+        code = try std.fmt.allocPrint(allocator, "add\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+
         // ignore the ']'
         try proceed(current);
     }
+
+    code = try std.fmt.allocPrint(allocator, "pop temp 0\n", .{});
+    try writeCode(writer, code);
+    allocator.free(code);
 
     // ignore the '='
     try proceed(current);
 
     try _expression(writer, tokens_list, current, class_table, function_table);
 
+    code = try std.fmt.allocPrint(allocator, "push temp 0\npop pointer 1\npop that 0\n", .{});
+    try writeCode(writer, code);
+    allocator.free(code);
+
     // ignore the ';'
     try proceed(current);
 }
 
-fn _whileStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"whileStatement"});
+fn _whileStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
+    const current_label = label_counter.*;
+    const next_label = label_counter.* + 1;
+    label_counter.* += 2;
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.while_kw);
+    // ignore the 'while' keyword
+    try proceed(current);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.lparen);
+    var code = try std.fmt.allocPrint(allocator, "label L{d}\n", .{current_label});
+    try writeCode(writer, code);
+    allocator.free(code);
 
-    try _expression(writer, depth + 1, tokens_list, current);
+    // ignore the '('
+    try proceed(current);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.rparen);
+    try _expression(allocator, writer, tokens_list, current, class_table, function_table);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.lbrace);
+    code = try std.fmt.allocPrint(allocator, "not\nif-goto L{d}\n", .{next_label});
+    try writeCode(writer, code);
+    allocator.free(code);
 
-    try _statements(writer, depth + 1, tokens_list, current);
+    //ignore the ')'
+    try proceed(current);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.rbrace);
+    // ignore the '{'
+    try proceed(current);
 
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/whileStatement"});
+    try _statements(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
+
+    code = try std.fmt.allocPrint(allocator, "goto L{d}\nlabel L{d}\n", .{ current_label, next_label });
+    try writeCode(writer, code);
+    allocator.free(code);
+
+    // ignore the '}'
+    try proceed(current);
 }
 
-fn _statement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
+fn _statement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
     if ((try peek(tokens_list, (current.*))).equals(tokens.if_kw)) {
-        try _ifStatement(writer, tokens_list, current, class_table, function_table, label_counter);
+        try _ifStatement(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
     } else {
         if ((try peek(tokens_list, (current.*))).equals(tokens.let_kw)) {
-            try _letStatement(writer, tokens_list, current, class_table, function_table);
+            try _letStatement(allocator, writer, tokens_list, current, class_table, function_table);
         } else {
             if ((try peek(tokens_list, (current.*))).equals(tokens.while_kw)) {
-                try _whileStatement(writer, tokens_list, current, class_table, function_table, label_counter);
+                try _whileStatement(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
             } else {
                 if ((try peek(tokens_list, (current.*))).equals(tokens.do_kw)) {
-                    try _doStatement(writer, tokens_list, current, class_table, function_table);
+                    try _doStatement(allocator, writer, tokens_list, current, class_table, function_table);
                 } else {
                     if ((try peek(tokens_list, (current.*))).equals(tokens.return_kw)) {
-                        try _returnStatement(writer, tokens_list, current, class_table, function_table);
+                        try _returnStatement(allocator, writer, tokens_list, current, class_table, function_table);
                     }
                 }
             }
@@ -196,83 +227,151 @@ fn _statement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usiz
     }
 }
 
-fn _statements(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
+fn _statements(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
     while ((try peek(tokens_list, (current.*))).equals(tokens.if_kw) or (try peek(tokens_list, (current.*))).equals(tokens.let_kw) or (try peek(tokens_list, (current.*))).equals(tokens.while_kw) or (try peek(tokens_list, (current.*))).equals(tokens.do_kw) or (try peek(tokens_list, (current.*))).equals(tokens.return_kw)) {
-        try _statement(writer, tokens_list, current, class_table, function_table, label_counter);
+        try _statement(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
     }
 }
 
-fn _subroutineCall(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _subroutineCall(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
     if ((try peek(tokens_list, (current.*) + 1)).equals(tokens.lparen) and (try peek(tokens_list, (current.*))).equals(tokens.identifier)) {
-        try _subroutineName(writer, depth, tokens_list, current);
+        const sub_routine_name = try _subroutineName(tokens_list, current);
 
-        try proceed(writer, depth, tokens_list, current, tokens.lparen);
+        // ignore the '('
+        try proceed(current);
 
-        try _expressionList(writer, depth, tokens_list, current);
+        const num_arguments = try _expressionList(allocator, writer, tokens_list, current, class_table, function_table);
 
-        try proceed(writer, depth, tokens_list, current, tokens.rparen);
+        const code = try std.fmt.allocPrint(allocator, "call {s} {d}\n", .{ sub_routine_name, num_arguments });
+        try writeCode(writer, code);
+        allocator.free(code);
+
+        // ignore the ')'
+        try proceed(current);
     } else {
         if ((try peek(tokens_list, (current.*) + 1)).equals(tokens.dot) and (try peek(tokens_list, (current.*))).equals(tokens.identifier)) {
-            try _varName(writer, depth, tokens_list, current);
+            const var_name: []const u8 = try _varName(tokens_list, current);
 
-            try proceed(writer, depth, tokens_list, current, tokens.dot);
+            const var_record = function_table.get(var_name) orelse {
+                class_table.get(var_name) orelse {
+                    std.debug.print("variable \"{s}\" not found in class or function symbol table!\n", .{var_name});
+                    std.process.exit(0);
+                };
+            };
 
-            try _subroutineName(writer, depth, tokens_list, current);
+            var code = try std.fmt.allocPrint(allocator, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
+            try writeCode(writer, code);
+            allocator.free(code);
 
-            try proceed(writer, depth, tokens_list, current, tokens.lparen);
+            // ignore the '.'
+            try proceed(current);
 
-            try _expressionList(writer, depth, tokens_list, current);
+            const sub_routine_name = try _subroutineName(tokens_list, current);
 
-            try proceed(writer, depth, tokens_list, current, tokens.rparen);
-        } else {
-            std.debug.print("unexpected token \"{s}\"!\n", .{(try peek(tokens_list, (current.*))).getContent()});
-            std.process.exit(0);
+            // ignore the '('
+            try proceed(current);
+
+            var num_arguments = try _expressionList(allocator, writer, tokens_list, current, class_table, function_table);
+
+            num_arguments += 1; // we need to add the 'this' pointer
+
+            code = try std.fmt.allocPrint(allocator, "call {s} {d}\n", .{ sub_routine_name, num_arguments });
+            try writeCode(writer, code);
+            allocator.free(code);
+
+            // ignore the ')'
+            try proceed(current);
         }
     }
 }
 
-fn _term(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"term"});
-
+fn _term(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
     if ((try peek(tokens_list, (current.*))).equals(tokens.integerConstant)) {
-        try proceed(writer, depth + 1, tokens_list, current, tokens.integerConstant);
+        const code = try std.fmt.allocPrint(allocator, "push constant {d}\n", .{(try peek(tokens_list, (current.*))).content});
+        try writeCode(writer, code);
+        allocator.free(code);
+
+        // ignore the integer constant
+        try proceed(current);
     } else {
         if ((try peek(tokens_list, (current.*))).equals(tokens.stringConstant)) {
-            try proceed(writer, depth + 1, tokens_list, current, tokens.stringConstant);
+            for ((try peek(tokens_list, (current.*))).content) |ch| {
+                const code = try std.fmt.allocPrint(allocator, "push constant {d}\n", .{ch});
+                try writeCode(writer, code);
+                allocator.free(code);
+            }
+            //ignore the string constant
+            try proceed(current);
         } else {
             if ((try peek(tokens_list, (current.*))).equals(tokens.true_kw) or (try peek(tokens_list, (current.*))).equals(tokens.false_kw) or (try peek(tokens_list, (current.*))).equals(tokens.null_kw) or (try peek(tokens_list, (current.*))).equals(tokens.this_kw)) {
-                try _keywordConstant(writer, depth + 1, tokens_list, current);
+                try _keywordConstant(writer, tokens_list, current);
             } else {
                 if ((try peek(tokens_list, (current.*))).equals(tokens.lparen)) {
-                    try proceed(writer, depth + 1, tokens_list, current, tokens.lparen);
+                    // ignore the '('
+                    try proceed(current);
 
-                    try _expression(writer, depth + 1, tokens_list, current);
+                    try _expression(allocator, writer, tokens_list, current, class_table, function_table);
 
-                    try proceed(writer, depth + 1, tokens_list, current, tokens.rparen);
+                    // ignore the ')'
+                    try proceed(current);
                 } else {
                     if (((try peek(tokens_list, (current.*) + 1)).equals(tokens.lparen) and (try peek(tokens_list, (current.*))).equals(tokens.identifier)) or ((try peek(tokens_list, (current.*) + 1)).equals(tokens.dot) and (try peek(tokens_list, (current.*))).equals(tokens.identifier))) {
-                        try _subroutineCall(writer, depth + 1, tokens_list, current);
+                        try _subroutineCall(allocator, writer, tokens_list, current, class_table, function_table);
                     } else {
                         if ((try peek(tokens_list, (current.*) + 1)).equals(tokens.lbracket) and (try peek(tokens_list, (current.*))).equals(tokens.identifier)) {
-                            try _varName(writer, depth + 1, tokens_list, current);
+                            const var_name = try _varName(tokens_list, current);
 
-                            try proceed(writer, depth + 1, tokens_list, current, tokens.lbracket);
+                            const var_record = function_table.get(var_name) orelse {
+                                class_table.get(var_name) orelse {
+                                    std.debug.print("variable \"{s}\" not found in class or function symbol table!\n", .{var_name});
+                                    std.process.exit(0);
+                                };
+                            };
 
-                            try _expression(writer, depth + 1, tokens_list, current);
+                            var code = try std.fmt.allocPrint(allocator, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
+                            try writeCode(writer, code);
+                            allocator.free(code);
 
-                            try proceed(writer, depth + 1, tokens_list, current, tokens.rbracket);
+                            // ignore the '['
+                            try proceed(current);
+
+                            try _expression(allocator, writer, tokens_list, current, class_table, function_table);
+
+                            code = try std.fmt.allocPrint(allocator, "add\npop pointer 1\npush that 0\n", .{});
+                            try writeCode(writer, code);
+                            allocator.free(code);
+
+                            // ignore the ']'
+                            try proceed(current);
                         } else {
                             if ((try peek(tokens_list, (current.*))).equals(tokens.tilde) or (try peek(tokens_list, (current.*))).equals(tokens.minus)) {
-                                try _unaryOp(writer, depth + 1, tokens_list, current);
+                                const is_minus = try _unaryOp(writer, tokens_list, current);
 
-                                try _term(writer, depth + 1, tokens_list, current);
+                                try _term(allocator, writer, tokens_list, current, class_table, function_table);
+
+                                if (is_minus) {
+                                    const code = try std.fmt.allocPrint(allocator, "neg\n", .{});
+                                    try writeCode(writer, code);
+                                    allocator.free(code);
+                                } else {
+                                    const code = try std.fmt.allocPrint(allocator, "not\n", .{});
+                                    try writeCode(writer, code);
+                                    allocator.free(code);
+                                }
                             } else {
                                 if (((try peek(tokens_list, (current.*))).equals(tokens.identifier)) and ((try peek(tokens_list, (current.*) + 1)).equals(tokens.rparen) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.rbracket) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.semicolon) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.comma) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.plus) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.minus) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.slash) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.star) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.pipe) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.amp) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.lt) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.gt) or (try peek(tokens_list, (current.*) + 1)).equals(tokens.equal))) {
-                                    try _varName(writer, depth + 1, tokens_list, current);
-                                } else {
-                                    std.debug.print("unexpected token \"{s}\"!\n", .{(try peek(tokens_list, (current.*))).getContent()});
-                                    std.process.exit(0);
+                                    const var_name = try _varName(tokens_list, current);
+
+                                    const var_record = function_table.get(var_name) orelse {
+                                        class_table.get(var_name) orelse {
+                                            std.debug.print("variable \"{s}\" not found in class or function symbol table!\n", .{var_name});
+                                            std.process.exit(0);
+                                        };
+                                    };
+
+                                    const code = try std.fmt.allocPrint(allocator, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
+                                    try writeCode(writer, code);
+                                    allocator.free(code);
                                 }
                             }
                         }
@@ -281,15 +380,11 @@ fn _term(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current:
             }
         }
     }
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/term"});
 }
 
-fn _expression(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"expression"});
+fn _expression(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
+    try _term(allocator, writer, tokens_list, current, class_table, function_table);
 
-    try _term(writer, depth + 1, tokens_list, current);
     var current_token = (try peek(tokens_list, (current.*)));
 
     while (current_token.equals(tokens.plus) or
@@ -302,92 +397,163 @@ fn _expression(writer: anytype, tokens_list: std.ArrayList(Token), current: *usi
         current_token.equals(tokens.gt) or
         current_token.equals(tokens.equal))
     {
-        try _op(writer, depth + 1, tokens_list, current);
+        try _op(allocator, writer, tokens_list, current);
 
-        try _term(writer, depth + 1, tokens_list, current);
+        try _term(allocator, writer, tokens_list, current, class_table, function_table);
 
         current_token = (try peek(tokens_list, (current.*)));
     }
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/expression"});
 }
 
-fn _op(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _op(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 
-    if ((current_token.equals(tokens.plus)) or (current_token.equals(tokens.minus)) or (current_token.equals(tokens.star)) or (current_token.equals(tokens.slash)) or (current_token.equals(tokens.amp)) or (current_token.equals(tokens.pipe)) or (current_token.equals(tokens.gt)) or (current_token.equals(tokens.lt)) or (current_token.equals(tokens.equal))) {
-        try proceed(writer, depth, tokens_list, current, current_token);
-    } else {
-        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
-        std.process.exit(0);
+    if (current_token.equals(tokens.plus)) {
+        // ignore the '+'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "add\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.minus)) {
+        // ignore the '-'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "sub\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.star)) {
+        // ignore the '*'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "call Math.multiply 2\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.slash)) {
+        // ignore the '/'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "call Math.divide 2\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.amp)) {
+        // ignore the '&'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "and\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.pipe)) {
+        // ignore the '|'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "or\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.gt)) {
+        // ignore the '>'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "gt\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.lt)) {
+        // ignore the '<'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "lt\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.equal)) {
+        // ignore the '='
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "eq\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
     }
 }
 
-fn _doStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"doStatement"});
+fn _doStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.do_kw);
+    // ignore the 'do' keyword
+    try proceed(current);
 
-    try _subroutineCall(writer, depth + 1, tokens_list, current);
+    try _subroutineCall(allocator, writer, tokens_list, current, class_table, function_table);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.semicolon);
-
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/doStatement"});
+    // ignore the ';'
+    try proceed(current);
 }
 
-fn _returnStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try proceed(writer, depth + 1, tokens_list, current, tokens.return_kw);
+fn _returnStatement(allocator: std.mem.Allocator, writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
+    // ignore the 'return' keyword
+    try proceed(current);
 
     if (!(try peek(tokens_list, (current.*))).equals(tokens.semicolon)) {
-        try _expression(writer, depth + 1, tokens_list, current);
+        try _expression(allocator, writer, depth + 1, tokens_list, current, class_table, function_table);
     }
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.semicolon);
+    const code = try std.fmt.allocPrint(allocator, "return\n", .{});
+    try writeCode(writer, code);
+    allocator.free(code);
+
+    // ignore the ';'
+    try proceed(current);
 }
 
-fn _expressionList(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"expressionList"});
+fn _expressionList(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!usize {
+    var num_expressions: usize = 0;
 
     if ((try peek(tokens_list, (current.*))).equals(tokens.integerConstant) or (try peek(tokens_list, (current.*))).equals(tokens.stringConstant) or (try peek(tokens_list, (current.*))).equals(tokens.true_kw) or (try peek(tokens_list, (current.*))).equals(tokens.false_kw) or (try peek(tokens_list, (current.*))).equals(tokens.null_kw) or (try peek(tokens_list, (current.*))).equals(tokens.this_kw) or (try peek(tokens_list, (current.*))).equals(tokens.identifier) or (try peek(tokens_list, (current.*))).equals(tokens.lparen) or (try peek(tokens_list, (current.*))).equals(tokens.minus) or (try peek(tokens_list, (current.*))).equals(tokens.tilde)) {
-        try _expression(writer, depth + 1, tokens_list, current);
+        try _expression(allocator, writer, tokens_list, current, class_table, function_table);
+
+        num_expressions += 1;
 
         while ((try peek(tokens_list, (current.*))).equals(tokens.comma)) {
-            try proceed(writer, depth + 1, tokens_list, current, tokens.comma);
+            // ignore the ','
+            try proceed(current);
 
-            try _expression(writer, depth + 1, tokens_list, current);
+            try _expression(allocator, writer, tokens_list, current, class_table, function_table);
+
+            num_expressions += 1;
         }
     }
 
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/expressionList"});
+    return num_expressions;
 }
 
-fn _keywordConstant(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _keywordConstant(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 
-    if (current_token.equals(tokens.true_kw) or
-        current_token.equals(tokens.false_kw) or
-        current_token.equals(tokens.null_kw) or
-        current_token.equals(tokens.this_kw))
-    {
-        try proceed(writer, depth, tokens_list, current, current_token);
-    } else {
-        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
-        std.process.exit(0);
+    if (current_token.equals(tokens.true_kw)) {
+        // ignore the 'true'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "push constant -1\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.false_kw)) {
+        // ignore the 'false'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "push constant 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.null_kw)) {
+        // ignore the 'null'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "push constant 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+    } else if (current_token.equals(tokens.this_kw)) {
+        // ignore the 'this'
+        try proceed(current);
+        const code = try std.fmt.allocPrint(allocator, "push pointer 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
     }
 }
 
-fn _unaryOp(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _unaryOp(tokens_list: std.ArrayList(Token), current: *usize) anyerror!bool {
     const current_token = (try peek(tokens_list, (current.*)));
 
-    if (current_token.equals(tokens.tilde) or current_token.equals(tokens.minus)) {
-        try proceed(writer, depth, tokens_list, current, current_token);
-    } else {
-        std.debug.print("unexpected token \"{s}\"!\n", .{current_token.getContent()});
-        std.process.exit(0);
+    if (current_token.equals(tokens.tilde)) {
+        // ignore the '~'
+        try proceed(current);
+        return false;
+    } else if (current_token.equals(tokens.minus)) {
+        // ignore the '-'
+        try proceed(current);
+        return true;
     }
 }
 
@@ -395,7 +561,7 @@ fn _className(current: *usize) anyerror!void {
     try proceed(current);
 }
 
-fn _subroutineName(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]u8 {
+fn _subroutineName(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]const u8 {
     const result = (try peek(tokens_list, (current.*))).content;
 
     try proceed(current);
@@ -408,13 +574,13 @@ fn _varName(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]const
     const result = (try peek(tokens_list, (current.*))).content;
 
     // get over the variable name
-    try proceed(current, tokens.identifier);
+    try proceed(current);
 
     // return the variable name
     return result;
 }
 
-fn _classVarDec(allocator: std.heap.page_allocator, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, class_name: []const u8, static_counter: *usize, field_counter: *usize) anyerror!void {
+fn _classVarDec(allocator: std.mem.Allocator, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, static_counter: *usize, field_counter: *usize) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 
     // check if the current token is 'static' or 'field'
@@ -434,7 +600,7 @@ fn _classVarDec(allocator: std.heap.page_allocator, tokens_list: std.ArrayList(T
 
     // add the class variable to the class symbol table
 
-    try insert_into_class_symbol_table(allocator, class_table, class_name, var_type, is_static, if (is_static) static_counter else field_counter);
+    try insert_into_class_symbol_table(allocator, class_table, var_type, is_static, if (is_static) static_counter else field_counter);
 
     while ((try peek(tokens_list, (current.*))).equals(tokens.comma)) {
         // ignore ','
@@ -443,7 +609,7 @@ fn _classVarDec(allocator: std.heap.page_allocator, tokens_list: std.ArrayList(T
         var_name = try _varName(tokens_list, current);
 
         // add the class variable to the class symbol table
-        try insert_into_class_symbol_table(allocator, class_table, var_type, is_static, if (is_static) static_counter.* else field_counter.*);
+        try insert_into_class_symbol_table(allocator, class_table, var_type, is_static, if (is_static) static_counter else field_counter);
     }
 
     // ignore ';'
@@ -457,16 +623,19 @@ fn _type(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]const u8
     return current_token.content;
 }
 
-pub fn _subroutineDec(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, label_counter: *usize) anyerror!void {
+pub fn _subroutineDec(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, label_counter: *usize) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 
-    const function_table = SymbolMap.init(allocator);
+    var function_table = FunctionMap.init(allocator);
     defer function_table.deinit();
 
     var num_arguments: u32 = 0;
 
+    var is_method = false;
+
     // if this is a method we need to add 1 more argument for the 'this' pointer
     if (current_token.equals(tokens.method_kw)) {
+        is_method = true;
         num_arguments += 1;
     }
 
@@ -482,20 +651,30 @@ pub fn _subroutineDec(allocator: std.heap.page_allocator, writer: anytype, token
     // ignore the '('
     try proceed(current);
 
-    num_arguments += try _parameterList(tokens_list, current, function_table);
+    num_arguments += try _parameterList(tokens_list, current, &function_table);
 
     const declaration_code = try std.fmt.allocPrint(allocator, "function {s} {d}\n", .{ function_name, num_arguments });
+
+    if (is_method) {
+        // if this is a method, we need to add 1 more argument for the 'this' pointer
+        var code = try std.fmt.allocPrint(allocator, "push argument 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+        code = try std.fmt.allocPrint(allocator, "pop pointer 0\n", .{});
+        try writeCode(writer, code);
+    }
+
     defer allocator.free(declaration_code);
 
-    writeCode(writer, declaration_code);
+    try writeCode(writer, declaration_code);
 
     // ignore the ')'
     try proceed(current);
 
-    try _subroutineBody(writer, tokens_list, current, class_table, function_table, label_counter);
+    try _subroutineBody(allocator, writer, tokens_list, current, class_table, &function_table, label_counter);
 }
 
-fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_table: SymbolMap) anyerror!u32 {
+fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_table: *FunctionMap) anyerror!u32 {
     const current_token = (try peek(tokens_list, (current.*)));
 
     var num_arguments: u32 = 0;
@@ -505,7 +684,7 @@ fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_t
 
         var var_name: []const u8 = try _varName(tokens_list, current);
 
-        function_table.put(var_name, records.SymbolRecord.init(var_type, true, num_arguments)) catch unreachable;
+        function_table.put(var_name, records.FunctionRecord.init(var_type, true, num_arguments)) catch unreachable;
 
         num_arguments += 1;
 
@@ -517,7 +696,7 @@ fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_t
 
             var_name = try _varName(tokens_list, current);
 
-            function_table.put(var_name, records.SymbolRecord.init(var_type, true, num_arguments)) catch unreachable;
+            function_table.put(var_name, records.FunctionRecord.init(var_type, true, num_arguments)) catch unreachable;
 
             num_arguments += 1;
         }
@@ -526,7 +705,7 @@ fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_t
     return num_arguments;
 }
 
-fn _subroutineBody(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, function_table: SymbolMap, label_counter: *usize) anyerror!void {
+fn _subroutineBody(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
 
     // ignore the '{'
     try proceed(current);
@@ -537,13 +716,13 @@ fn _subroutineBody(writer: anytype, tokens_list: std.ArrayList(Token), current: 
         try _varDec(tokens_list, current, function_table, &local_counter);
     }
 
-    try _statements(writer, tokens_list, current, class_table, function_table, label_counter);
+    try _statements(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
 
     // ignore the '}'
     try proceed(current);
 }
 
-fn _varDec(tokens_list: std.ArrayList(Token), current: *usize, function_table: SymbolMap, local_counter: *usize) anyerror!void {
+fn _varDec(tokens_list: std.ArrayList(Token), current: *usize, function_table: *FunctionMap, local_counter: *usize) anyerror!void {
 
     // ignore 'var'
     try proceed(current);
@@ -552,7 +731,7 @@ fn _varDec(tokens_list: std.ArrayList(Token), current: *usize, function_table: S
 
     var var_name: []const u8 = try _varName(tokens_list, current);
 
-    function_table.put(var_name, records.SymbolRecord.init(var_type, false, local_counter)) catch unreachable;
+    function_table.put(var_name, records.FunctionRecord.init(var_type, false, local_counter)) catch unreachable;
 
     local_counter.* += 1;
 
@@ -562,7 +741,7 @@ fn _varDec(tokens_list: std.ArrayList(Token), current: *usize, function_table: S
 
         var_name = try _varName(tokens_list, current);
 
-        function_table.put(var_name, records.SymbolRecord.init(var_type, false, local_counter)) catch unreachable;
+        function_table.put(var_name, records.FunctionRecord.init(var_type, false, local_counter)) catch unreachable;
 
         local_counter.* += 1;
     }
