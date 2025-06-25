@@ -20,7 +20,8 @@ fn writeNode(writer: anytype, depth: u8, token: Token) anyerror!void {
     try writer.print("<{s}> {s} </{s}>\n", .{ token.getLexeme(), token.getContent(), token.getLexeme() });
 }
 
-// the function that sees if the current token is what we want him to be. if so, proceed to the next token and write the current token to the file. else: error!
+// the function that sees if the current token is what we want him to be.
+// if so, proceed to the next token and write the current token to the file. else: error!
 fn match(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize, matched_token: Token) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 

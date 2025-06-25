@@ -1,7 +1,8 @@
 const std = @import("std");
 const Token = @import("token.zig").Token;
 const records = @import("symbol_table_records.zig");
-const SymbolMap = std.AutoHashMap([]const u8, records.SymbolRecord);
+const FunctionMap = std.AutoHashMap([]const u8, records.FunctionRecord);
+const ClassMap = std.AutoHashMap([]const u8, records.ClassRecord);
 const tokens = @import("tokens.zig");
 
 // helping function to return the current token
@@ -22,16 +23,16 @@ fn proceed(current: *usize) anyerror!void {
 }
 
 // helping function to put some record inside the class symbol table
-fn insert_into_function_symbol_table(allocator: std.heap.page_allocator, class_table: SymbolMap, var_type: []const u8, is_argument: bool, index: *usize) anyerror!void {
-    const record_ptr = allocator.create(records.ClassRecord) catch unreachable;
+fn insert_into_function_symbol_table(allocator: std.heap.page_allocator, function_table: FunctionMap, var_type: []const u8, is_argument: bool, index: *usize) anyerror!void {
+    const record_ptr = allocator.create(records.FunctionRecord) catch unreachable;
     record_ptr.* = records.ClassRecord.init(var_type, is_argument, index);
-    class_table.put(var_type, record_ptr.*) catch unreachable;
+    function_table.put(var_type, record_ptr.*) catch unreachable;
 
     index.* += 1;
 }
 
 // helping function to put some record inside the class symbol table
-fn insert_into_class_symbol_table(allocator: std.heap.page_allocator, class_table: SymbolMap, var_type: []const u8, is_static: bool, index: *usize) anyerror!void {
+fn insert_into_class_symbol_table(allocator: std.heap.page_allocator, class_table: ClassMap, var_type: []const u8, is_static: bool, index: *usize) anyerror!void {
     const record_ptr = allocator.create(records.ClassRecord) catch unreachable;
     record_ptr.* = records.ClassRecord.init(var_type, is_static, index);
     class_table.put(var_type, record_ptr.*) catch unreachable;
@@ -42,7 +43,7 @@ fn insert_into_class_symbol_table(allocator: std.heap.page_allocator, class_tabl
 //--------------------------------------------------------
 // the code writer functions:
 //--------------------------------------------------------
-pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, class_name: []const u8, static_counter: *usize, field_counter: *usize) anyerror!void {
+pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: ClassMap, class_name: []const u8, static_counter: *usize, field_counter: *usize, label_counter: *usize) anyerror!void {
 
     // ignore 'class'
     try proceed(current);
@@ -60,7 +61,7 @@ pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: 
 
     // while we have subroutine declarations, we will handle them
     while ((try peek(tokens_list, (current.*))).equals(tokens.constructor_kw) or (try peek(tokens_list, (current.*))).equals(tokens.method_kw) or (try peek(tokens_list, (current.*))).equals(tokens.function_kw)) {
-        try _subroutineDec(allocator, writer, tokens_list, current, class_table);
+        try _subroutineDec(allocator, writer, tokens_list, current, class_table, label_counter);
     }
 
     // ignore '}'
@@ -69,65 +70,89 @@ pub fn _class(allocator: std.heap.page_allocator, writer: anytype, tokens_list: 
     return;
 }
 
-fn _ifStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"ifStatement"});
+fn _ifStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
+    const current_label = label_counter.*;
+    label_counter.* += 1;
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.if_kw);
+    //ignore the 'if' keyword
+    try proceed(current);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.lparen);
+    //ignore the '('
+    try proceed(current);
 
-    try _expression(writer, depth + 1, tokens_list, current);
+    try _expression(writer, tokens_list, current, class_table, function_table);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.rparen);
+    writeCode(writer, "not\n if-goto L{d}\n", .{current_label});
+    //ignore the ')'
+    try proceed(current);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.lbrace);
+    // ignore the '{'
+    try proceed(current);
 
-    try _statements(writer, depth + 1, tokens_list, current);
+    try _statements(writer, tokens_list, current, class_table, function_table, label_counter);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.rbrace);
+    // ignore the '}'
+    try proceed(current);
 
     if ((try peek(tokens_list, (current.*))).equals(tokens.else_kw)) {
-        try proceed(writer, depth + 1, tokens_list, current, tokens.else_kw);
+        const next_label = label_counter.*;
+        label_counter.* += 1;
 
-        try proceed(writer, depth + 1, tokens_list, current, tokens.lbrace);
+        writeCode(writer, "goto L{d}\nlabel{d}\n", .{ next_label, current_label });
 
-        try _statements(writer, depth + 1, tokens_list, current);
+        // ignore the 'else' keyword
+        try proceed(current);
 
-        try proceed(writer, depth + 1, tokens_list, current, tokens.rbrace);
+        // ignore the '{'
+        try proceed(current);
+
+        try _statements(writer, tokens_list, current, class_table, function_table, label_counter);
+
+        writeCode(writer, "label L{d}\n", .{next_label});
+
+        // ignore the '}'
+        try proceed(current);
+    } else {
+        writeCode(writer, "label L{d}\n", .{current_label});
     }
-
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/ifStatement"});
 }
 
-fn _letStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"letStatement"});
+fn _letStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.let_kw);
+    //ignore the 'let' keyword
+    try proceed(current);
 
-    try _varName(writer, depth + 1, tokens_list, current);
+    const var_name = try _varName(tokens_list, current);
 
+    const var_record = function_table.get(var_name) orelse {
+        class_table.get(var_name) orelse {
+            std.debug.print("variable \"{s}\" not found in class or function symbol table!\n", .{var_name});
+            std.process.exit(0);
+        };
+    };
+
+    writeCode(writer, "push {s} {d}\n", .{ var_record.var_type, var_record.index });
     if ((try peek(tokens_list, (current.*))).equals(tokens.lbracket)) {
-        try proceed(writer, depth + 1, tokens_list, current, tokens.lbracket);
 
-        try _expression(writer, depth + 1, tokens_list, current);
+        // ignore the '['
+        try proceed(current);
 
-        try proceed(writer, depth + 1, tokens_list, current, tokens.rbracket);
+        try _expression(writer, tokens_list, current, class_table, function_table);
+
+        // ignore the ']'
+        try proceed(current);
     }
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.equal);
+    // ignore the '='
+    try proceed(current);
 
-    try _expression(writer, depth + 1, tokens_list, current);
+    try _expression(writer, tokens_list, current, class_table, function_table);
 
-    try proceed(writer, depth + 1, tokens_list, current, tokens.semicolon);
-
-    try writePadding(writer, depth);
-    try writer.print("<{s}>\n", .{"/letStatement"});
+    // ignore the ';'
+    try proceed(current);
 }
 
-fn _whileStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _whileStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
     try writePadding(writer, depth);
     try writer.print("<{s}>\n", .{"whileStatement"});
 
@@ -149,24 +174,21 @@ fn _whileStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token)
     try writer.print("<{s}>\n", .{"/whileStatement"});
 }
 
-fn _statement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _statement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
     if ((try peek(tokens_list, (current.*))).equals(tokens.if_kw)) {
-        try _ifStatement(writer, depth, tokens_list, current);
+        try _ifStatement(writer, tokens_list, current, class_table, function_table, label_counter);
     } else {
         if ((try peek(tokens_list, (current.*))).equals(tokens.let_kw)) {
-            try _letStatement(writer, depth, tokens_list, current);
+            try _letStatement(writer, tokens_list, current, class_table, function_table);
         } else {
             if ((try peek(tokens_list, (current.*))).equals(tokens.while_kw)) {
-                try _whileStatement(writer, depth, tokens_list, current);
+                try _whileStatement(writer, tokens_list, current, class_table, function_table, label_counter);
             } else {
                 if ((try peek(tokens_list, (current.*))).equals(tokens.do_kw)) {
-                    try _doStatement(writer, depth, tokens_list, current);
+                    try _doStatement(writer, tokens_list, current, class_table, function_table);
                 } else {
                     if ((try peek(tokens_list, (current.*))).equals(tokens.return_kw)) {
-                        try _returnStatement(writer, depth, tokens_list, current);
-                    } else {
-                        std.debug.print("unexpected token \"{s}\"!\n", .{(try peek(tokens_list, (current.*))).getContent()});
-                        std.process.exit(0);
+                        try _returnStatement(writer, tokens_list, current, class_table, function_table);
                     }
                 }
             }
@@ -174,9 +196,9 @@ fn _statement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), cur
     }
 }
 
-fn _statements(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _statements(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap, label_counter: *usize) anyerror!void {
     while ((try peek(tokens_list, (current.*))).equals(tokens.if_kw) or (try peek(tokens_list, (current.*))).equals(tokens.let_kw) or (try peek(tokens_list, (current.*))).equals(tokens.while_kw) or (try peek(tokens_list, (current.*))).equals(tokens.do_kw) or (try peek(tokens_list, (current.*))).equals(tokens.return_kw)) {
-        try _statement(writer, depth + 1, tokens_list, current);
+        try _statement(writer, tokens_list, current, class_table, function_table, label_counter);
     }
 }
 
@@ -263,7 +285,7 @@ fn _term(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current:
     try writer.print("<{s}>\n", .{"/term"});
 }
 
-fn _expression(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _expression(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
     try writePadding(writer, depth);
     try writer.print("<{s}>\n", .{"expression"});
 
@@ -301,7 +323,7 @@ fn _op(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *
     }
 }
 
-fn _doStatement(writer: anytype, depth: u8, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _doStatement(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *SymbolMap, function_table: *SymbolMap) anyerror!void {
     try writePadding(writer, depth);
     try writer.print("<{s}>\n", .{"doStatement"});
 
@@ -435,7 +457,7 @@ fn _type(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]const u8
     return current_token.content;
 }
 
-pub fn _subroutineDec(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap) anyerror!void {
+pub fn _subroutineDec(allocator: std.heap.page_allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, label_counter: *usize) anyerror!void {
     const current_token = (try peek(tokens_list, (current.*)));
 
     const function_table = SymbolMap.init(allocator);
@@ -470,7 +492,7 @@ pub fn _subroutineDec(allocator: std.heap.page_allocator, writer: anytype, token
     // ignore the ')'
     try proceed(current);
 
-    try _subroutineBody(writer, tokens_list, current, class_table, function_table);
+    try _subroutineBody(writer, tokens_list, current, class_table, function_table, label_counter);
 }
 
 fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_table: SymbolMap) anyerror!u32 {
@@ -504,7 +526,7 @@ fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_t
     return num_arguments;
 }
 
-fn _subroutineBody(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, function_table: SymbolMap) anyerror!void {
+fn _subroutineBody(writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: SymbolMap, function_table: SymbolMap, label_counter: *usize) anyerror!void {
 
     // ignore the '{'
     try proceed(current);
@@ -515,7 +537,7 @@ fn _subroutineBody(writer: anytype, tokens_list: std.ArrayList(Token), current: 
         try _varDec(tokens_list, current, function_table, &local_counter);
     }
 
-    try _statements(writer, depth + 1, tokens_list, current);
+    try _statements(writer, tokens_list, current, class_table, function_table, label_counter);
 
     // ignore the '}'
     try proceed(current);
