@@ -2,7 +2,7 @@ const std = @import("std");
 
 // struct of the Class table record
 pub const ClassRecord = struct {
-    var_type: []const usize,
+    var_type: []const u8,
     static: bool,
     index: usize,
 
@@ -21,13 +21,13 @@ pub const ClassRecord = struct {
 
 // struct of the Function table record
 pub const FunctionRecord = struct {
-    return_type: []const usize,
+    var_type: []const u8,
     argument: bool,
     index: usize,
 
-    pub fn init(return_type: []const u8, argument: bool, index: usize) FunctionRecord {
+    pub fn init(var_type: []const u8, argument: bool, index: usize) FunctionRecord {
         return FunctionRecord{
-            .return_type = return_type,
+            .var_type = var_type,
             .argument = argument,
             .index = index,
         };

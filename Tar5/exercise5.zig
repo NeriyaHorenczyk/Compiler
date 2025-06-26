@@ -8,7 +8,7 @@ const mem = std.mem;
 const Token = @import("token.zig").Token;
 const code_generator = @import("code_generator.zig");
 const records = @import("symbol_table_records.zig");
-const ClassMap = std.AutoHashMap([]const u8, records.ClassRecord);
+const ClassMap = std.StringHashMap(records.ClassRecord);
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -36,7 +36,7 @@ pub fn main() !void {
         if (!mem.endsWith(u8, entry.name, "T.xml")) continue;
 
         //create string with the final output file path
-        const out_file_path = try std.fmt.allocPrint(allocator, "{s}/{s}.xml", .{ input_directory_path, clear_file_name[0 .. clear_file_name.len - 1] });
+        const out_file_path = try std.fmt.allocPrint(allocator, "{s}/{s}.vm", .{ input_directory_path, clear_file_name[0 .. clear_file_name.len - 1] });
         defer allocator.free(out_file_path);
 
         //create the new output file or rewriting for it if it is existed before
