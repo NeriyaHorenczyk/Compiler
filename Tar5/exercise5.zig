@@ -71,7 +71,7 @@ pub fn main() !void {
             var field_counter: usize = 0;
             var label_counter: usize = 0;
 
-            try code_generator._class(allocator, writer, tokens, &current, &class_table, &static_counter, &field_counter, &label_counter);
+            try code_generator._class(allocator, writer, tokens, &current, &class_table, &static_counter, &field_counter, &label_counter, clear_file_name);
         }
     }
 }

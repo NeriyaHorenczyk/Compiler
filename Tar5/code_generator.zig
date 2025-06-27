@@ -55,7 +55,7 @@ fn extract_index_from_symbol_tables(class_table: *ClassMap, function_table: *Fun
 //--------------------------------------------------------
 // the code writer functions:
 //--------------------------------------------------------
-pub fn _class(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, static_counter: *usize, field_counter: *usize, label_counter: *usize) anyerror!void {
+pub fn _class(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, static_counter: *usize, field_counter: *usize, label_counter: *usize, class_name: []const u8) anyerror!void {
     std.debug.print("class\n", .{});
 
     // ignore 'class'
@@ -74,7 +74,7 @@ pub fn _class(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.Ar
 
     // while we have subroutine declarations, we will handle them
     while ((try peek(tokens_list, (current.*))).equals(tokens.constructor_kw) or (try peek(tokens_list, (current.*))).equals(tokens.method_kw) or (try peek(tokens_list, (current.*))).equals(tokens.function_kw)) {
-        try _subroutineDec(allocator, writer, tokens_list, current, class_table, label_counter);
+        try _subroutineDec(allocator, writer, tokens_list, current, class_table, label_counter, class_name);
     }
 
     // ignore '}'
@@ -193,7 +193,7 @@ fn _letStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std
 
         try _expression(allocator, writer, tokens_list, current, class_table, function_table);
 
-        const code = try std.fmt.allocPrint(allocator, "push {s} {d}\n", .{ var_segment, var_index });
+        const code = try std.fmt.allocPrint(allocator, "pop {s} {d}\n", .{ var_segment, var_index });
         try writeCode(writer, code);
         allocator.free(code);
 
@@ -345,8 +345,12 @@ fn _term(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayLi
         try proceed(current);
     } else {
         if ((try peek(tokens_list, (current.*))).equals(tokens.stringConstant)) {
+            var code = try std.fmt.allocPrint(allocator, "push constant {d}\ncall String.new 1\n", .{(try peek(tokens_list, (current.*))).content.len});
+            try writeCode(writer, code);
+            allocator.free(code);
+
             for ((try peek(tokens_list, (current.*))).content) |ch| {
-                const code = try std.fmt.allocPrint(allocator, "push constant {d}\ncall String.appendChar 2\n", .{ch});
+                code = try std.fmt.allocPrint(allocator, "push constant {d}\ncall String.appendChar 2\n", .{ch});
                 try writeCode(writer, code);
                 allocator.free(code);
             }
@@ -453,15 +457,18 @@ fn _expression(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.A
         current_token.equals(tokens.gt) or
         current_token.equals(tokens.equal))
     {
-        try _op(allocator, writer, tokens_list, current);
+        const code = try _op(allocator, tokens_list, current);
 
         try _term(allocator, writer, tokens_list, current, class_table, function_table);
+
+        try writeCode(writer, code);
+        allocator.free(code);
 
         current_token = (try peek(tokens_list, (current.*)));
     }
 }
 
-fn _op(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize) anyerror!void {
+fn _op(allocator: std.mem.Allocator, tokens_list: std.ArrayList(Token), current: *usize) anyerror![]u8 {
     std.debug.print("op\n", .{});
 
     const current_token = (try peek(tokens_list, (current.*)));
@@ -469,58 +476,39 @@ fn _op(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList
     if (current_token.equals(tokens.plus)) {
         // ignore the '+'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "add\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "add\n", .{});
     } else if (current_token.equals(tokens.minus)) {
         // ignore the '-'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "sub\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "sub\n", .{});
     } else if (current_token.equals(tokens.star)) {
         // ignore the '*'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "call Math.multiply 2\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "call Math.multiply 2\n", .{});
     } else if (current_token.equals(tokens.slash)) {
         // ignore the '/'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "call Math.divide 2\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "call Math.divide 2\n", .{});
     } else if (current_token.equals(tokens.amp)) {
         // ignore the '&'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "and\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "and\n", .{});
     } else if (current_token.equals(tokens.pipe)) {
         // ignore the '|'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "or\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "or\n", .{});
     } else if (current_token.equals(tokens.gt)) {
         // ignore the '>'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "gt\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
+        return try std.fmt.allocPrint(allocator, "gt\n", .{});
     } else if (current_token.equals(tokens.lt)) {
         // ignore the '<'
         try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "lt\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
-    } else if (current_token.equals(tokens.equal)) {
-        // ignore the '='
-        try proceed(current);
-        const code = try std.fmt.allocPrint(allocator, "eq\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
-    }
+        return try std.fmt.allocPrint(allocator, "lt\n", .{});
+    } // else - it is equal operator
+    // ignore the '='
+    try proceed(current);
+    return try std.fmt.allocPrint(allocator, "eq\n", .{});
 }
 
 fn _doStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap) anyerror!void {
@@ -530,6 +518,11 @@ fn _doStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.
     try proceed(current);
 
     try _subroutineCall(allocator, writer, tokens_list, current, class_table, function_table);
+
+    // get rid of the return value
+    const code = try std.fmt.allocPrint(allocator, "pop temp 0\n", .{});
+    try writeCode(writer, code);
+    allocator.free(code);
 
     // ignore the ';'
     try proceed(current);
@@ -543,6 +536,11 @@ fn _returnStatement(allocator: std.mem.Allocator, writer: anytype, tokens_list: 
 
     if (!(try peek(tokens_list, (current.*))).equals(tokens.semicolon)) {
         try _expression(allocator, writer, tokens_list, current, class_table, function_table);
+    } else {
+        // push 0 to the stack if there is no expression
+        const code = try std.fmt.allocPrint(allocator, "push constant 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
     }
 
     const code = try std.fmt.allocPrint(allocator, "return\n", .{});
@@ -699,7 +697,7 @@ fn _type(tokens_list: std.ArrayList(Token), current: *usize) anyerror![]const u8
     return current_token.content;
 }
 
-pub fn _subroutineDec(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, label_counter: *usize) anyerror!void {
+pub fn _subroutineDec(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, label_counter: *usize, class_name: []const u8) anyerror!void {
     std.debug.print("subroutine declaration\n", .{});
 
     const current_token = (try peek(tokens_list, (current.*)));
@@ -731,23 +729,10 @@ pub fn _subroutineDec(allocator: std.mem.Allocator, writer: anytype, tokens_list
 
     num_arguments += try _parameterList(tokens_list, current, &function_table);
 
-    const declaration_code = try std.fmt.allocPrint(allocator, "function {s} {d}\n", .{ function_name, num_arguments });
-    try writeCode(writer, declaration_code);
-    allocator.free(declaration_code);
-
-    if (is_method) {
-        // if this is a method, we need to add 1 more argument for the 'this' pointer
-        var code = try std.fmt.allocPrint(allocator, "push argument 0\n", .{});
-        try writeCode(writer, code);
-        allocator.free(code);
-        code = try std.fmt.allocPrint(allocator, "pop pointer 0\n", .{});
-        try writeCode(writer, code);
-    }
-
     // ignore the ')'
     try proceed(current);
 
-    try _subroutineBody(allocator, writer, tokens_list, current, class_table, &function_table, label_counter);
+    try _subroutineBody(allocator, writer, tokens_list, current, class_table, &function_table, label_counter, function_name, is_method, class_name);
 }
 
 fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_table: *FunctionMap) anyerror!u32 {
@@ -783,7 +768,7 @@ fn _parameterList(tokens_list: std.ArrayList(Token), current: *usize, function_t
     return num_arguments;
 }
 
-fn _subroutineBody(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize) anyerror!void {
+fn _subroutineBody(allocator: std.mem.Allocator, writer: anytype, tokens_list: std.ArrayList(Token), current: *usize, class_table: *ClassMap, function_table: *FunctionMap, label_counter: *usize, function_name: []const u8, is_method: bool, class_name: []const u8) anyerror!void {
     std.debug.print("subroutine body\n", .{});
 
     // ignore the '{'
@@ -793,6 +778,19 @@ fn _subroutineBody(allocator: std.mem.Allocator, writer: anytype, tokens_list: s
 
     while ((try peek(tokens_list, (current.*))).equals(tokens.var_kw)) {
         try _varDec(tokens_list, current, function_table, &local_counter);
+    }
+
+    const declaration_code = try std.fmt.allocPrint(allocator, "function {s}.{s} {d}\n", .{ class_name[0 .. class_name.len - 1], function_name, local_counter });
+    try writeCode(writer, declaration_code);
+    allocator.free(declaration_code);
+
+    if (is_method) {
+        // if this is a method, we need to add 1 more argument for the 'this' pointer
+        var code = try std.fmt.allocPrint(allocator, "push argument 0\n", .{});
+        try writeCode(writer, code);
+        allocator.free(code);
+        code = try std.fmt.allocPrint(allocator, "pop pointer 0\n", .{});
+        try writeCode(writer, code);
     }
 
     try _statements(allocator, writer, tokens_list, current, class_table, function_table, label_counter);
