@@ -1,0 +1,561 @@
+function Board.new 1
+push constant 3
+call Memory.alloc 1
+pop pointer 0
+push constant 80
+call Array.new 1
+pop this 0
+push constant 4
+call Array.new 1
+pop this 1
+push constant 4
+call Array.new 1
+pop this 2
+push constant 0
+pop local 0
+label L0
+push local 0
+push constant 80
+lt
+not
+if-goto L1
+push this 0
+push local 0
+add
+push constant 1
+neg
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 0
+push constant 1
+add
+pop local 0
+goto L0
+label L1
+push pointer 0
+return
+function Board.placePiece 2
+push argument 0
+pop pointer 0
+push constant 7
+pop local 0
+label L2
+push local 0
+push constant 0
+gt
+push local 0
+push constant 0
+eq
+or
+not
+if-goto L3
+push local 0
+push constant 10
+call Math.multiply 2
+push argument 1
+add
+pop local 1
+push this 0
+push local 1
+add
+pop pointer 1
+push that 0
+push constant 1
+neg
+eq
+not
+ if-goto L4
+push this 0
+push local 1
+add
+push argument 2
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push argument 2
+push constant 1
+eq
+not
+ if-goto L5
+push local 0
+push argument 1
+call Graphics.Print_Piece_Type_One 2
+pop temp 0
+goto L6
+label L5
+push local 0
+push argument 1
+call Graphics.Print_Piece_Type_Two 2
+pop temp 0
+label L6
+push constant 0
+not
+return
+label L4
+push local 0
+push constant 1
+sub
+pop local 0
+goto L2
+label L3
+push constant 0
+return
+function Board.checkWin 4
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label L7
+push local 0
+push constant 8
+lt
+not
+if-goto L8
+push constant 0
+pop local 1
+label L9
+push local 1
+push constant 6
+eq
+push local 1
+push constant 6
+lt
+or
+not
+if-goto L10
+push constant 0
+pop local 2
+push constant 0
+not
+pop local 3
+label L11
+push local 2
+push constant 4
+lt
+not
+if-goto L12
+push this 0
+push local 0
+push constant 10
+call Math.multiply 2
+push local 1
+push local 2
+add
+add
+add
+pop pointer 1
+push that 0
+push argument 1
+eq
+not
+not
+ if-goto L13
+push constant 0
+pop local 3
+label L13
+push local 2
+push constant 1
+add
+pop local 2
+goto L11
+label L12
+push local 3
+not
+ if-goto L14
+push constant 0
+pop local 2
+label L15
+push local 2
+push constant 4
+lt
+not
+if-goto L16
+push this 1
+push local 2
+add
+push local 0
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push this 2
+push local 2
+add
+push local 1
+push local 2
+add
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push constant 1
+add
+pop local 2
+goto L15
+label L16
+push constant 0
+not
+return
+label L14
+push local 1
+push constant 1
+add
+pop local 1
+goto L9
+label L10
+push local 0
+push constant 1
+add
+pop local 0
+goto L7
+label L8
+push constant 0
+pop local 1
+label L17
+push local 1
+push constant 10
+lt
+not
+if-goto L18
+push constant 0
+pop local 0
+label L19
+push local 0
+push constant 4
+eq
+push local 0
+push constant 4
+lt
+or
+not
+if-goto L20
+push constant 0
+pop local 2
+push constant 0
+not
+pop local 3
+label L21
+push local 2
+push constant 4
+lt
+not
+if-goto L22
+push this 0
+push local 0
+push local 2
+add
+push constant 10
+call Math.multiply 2
+push local 1
+add
+add
+pop pointer 1
+push that 0
+push argument 1
+eq
+not
+not
+ if-goto L23
+push constant 0
+pop local 3
+label L23
+push local 2
+push constant 1
+add
+pop local 2
+goto L21
+label L22
+push local 3
+not
+ if-goto L24
+push constant 0
+pop local 2
+label L25
+push local 2
+push constant 4
+lt
+not
+if-goto L26
+push this 1
+push local 2
+add
+push local 0
+push local 2
+add
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push this 2
+push local 2
+add
+push local 1
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push constant 1
+add
+pop local 2
+goto L25
+label L26
+push constant 0
+not
+return
+label L24
+push local 0
+push constant 1
+add
+pop local 0
+goto L19
+label L20
+push local 1
+push constant 1
+add
+pop local 1
+goto L17
+label L18
+push constant 4
+pop local 0
+label L27
+push local 0
+push constant 1
+neg
+gt
+not
+if-goto L28
+push constant 3
+pop local 1
+label L29
+push local 1
+push constant 10
+lt
+not
+if-goto L30
+push constant 0
+pop local 2
+push constant 0
+not
+pop local 3
+label L31
+push local 2
+push constant 4
+lt
+not
+if-goto L32
+push this 0
+push local 0
+push local 2
+add
+push constant 10
+call Math.multiply 2
+push local 1
+push local 2
+sub
+add
+add
+pop pointer 1
+push that 0
+push argument 1
+eq
+not
+not
+ if-goto L33
+push constant 0
+pop local 3
+label L33
+push local 2
+push constant 1
+add
+pop local 2
+goto L31
+label L32
+push local 3
+not
+ if-goto L34
+push constant 0
+pop local 2
+label L35
+push local 2
+push constant 4
+lt
+not
+if-goto L36
+push this 1
+push local 2
+add
+push local 0
+push local 2
+add
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push this 2
+push local 2
+add
+push local 1
+push local 2
+sub
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push constant 1
+add
+pop local 2
+goto L35
+label L36
+push constant 0
+not
+return
+label L34
+push local 1
+push constant 1
+add
+pop local 1
+goto L29
+label L30
+push local 0
+push constant 1
+sub
+pop local 0
+goto L27
+label L28
+push constant 3
+pop local 1
+label L37
+push local 1
+push constant 10
+lt
+not
+if-goto L38
+push constant 3
+pop local 0
+label L39
+push local 0
+push constant 8
+lt
+not
+if-goto L40
+push constant 0
+pop local 2
+push constant 0
+not
+pop local 3
+label L41
+push local 2
+push constant 4
+lt
+not
+if-goto L42
+push this 0
+push local 0
+push local 2
+sub
+push constant 10
+call Math.multiply 2
+push local 1
+push local 2
+sub
+add
+add
+pop pointer 1
+push that 0
+push argument 1
+eq
+not
+not
+ if-goto L43
+push constant 0
+pop local 3
+label L43
+push local 2
+push constant 1
+add
+pop local 2
+goto L41
+label L42
+push local 3
+not
+ if-goto L44
+push constant 0
+pop local 2
+label L45
+push local 2
+push constant 4
+lt
+not
+if-goto L46
+push this 1
+push local 2
+add
+push local 0
+push local 2
+sub
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push this 2
+push local 2
+add
+push local 1
+push local 2
+sub
+pop temp 0
+pop pointer 1
+push temp 0
+pop that 0
+push local 2
+push constant 1
+add
+pop local 2
+goto L45
+label L46
+push constant 0
+not
+return
+label L44
+push local 0
+push constant 1
+add
+pop local 0
+goto L39
+label L40
+push local 1
+push constant 1
+add
+pop local 1
+goto L37
+label L38
+push constant 0
+return
+function Board.getWinningIndexRow 1
+push argument 0
+pop pointer 0
+push this 1
+push argument 1
+add
+pop pointer 1
+push that 0
+pop local 0
+push local 0
+return
+function Board.getWinningIndexCol 1
+push argument 0
+pop pointer 0
+push this 2
+push argument 1
+add
+pop pointer 1
+push that 0
+pop local 0
+push local 0
+return

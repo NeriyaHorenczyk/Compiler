@@ -1,0 +1,100 @@
+function Player.new 0
+push constant 1
+call Memory.alloc 1
+pop pointer 0
+push argument 0
+pop this 0
+push pointer 0
+return
+function Player.getId 0
+push argument 0
+pop pointer 0
+push this 0
+return
+function Player.chooseColumn 3
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+push constant 0
+pop local 1
+push local 0
+push constant 0
+not
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+label L0
+push local 1
+not
+not
+if-goto L1
+call Keyboard.keyPressed 0
+pop local 2
+push local 2
+push constant 130
+eq
+push local 0
+push constant 0
+eq
+not
+and
+not
+ if-goto L2
+push local 0
+push constant 1
+sub
+pop local 0
+push local 0
+push constant 1
+add
+push constant 0
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+push local 0
+push constant 0
+not
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+label L2
+push local 2
+push constant 132
+eq
+push local 0
+push constant 9
+eq
+not
+and
+not
+ if-goto L3
+push local 0
+push constant 1
+add
+pop local 0
+push local 0
+push constant 1
+sub
+push constant 0
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+push local 0
+push constant 0
+not
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+label L3
+push local 2
+push constant 128
+eq
+not
+ if-goto L4
+push local 0
+push constant 0
+call Graphics.Print_Selection_Arrow 2
+pop temp 0
+push local 0
+return
+label L4
+goto L0
+label L1
+push local 0
+return

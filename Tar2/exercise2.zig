@@ -105,6 +105,10 @@ pub fn main() !void {
             }
         }
     }
+
+    const final_label = try std.fmt.allocPrint(allocator, "(EOF)\n", .{});
+    try writer.print("{s}", .{final_label});
+    allocator.free(final_label);
 }
 
 pub fn convertToHack(allocator: std.mem.Allocator, command: []u8, countersArr: *[4]i32, file_name: []const u8) ![]u8 {
@@ -593,6 +597,8 @@ pub fn generateBootstrapCode(allocator: std.mem.Allocator, counter_ptr: *i32) ![
         \\M=D
         \\//call Sys.init 0
         \\{s}
+        \\@EOF
+        \\0;JMP
     , .{call_sys});
 }
 
